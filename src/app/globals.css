@@ -1,0 +1,296 @@
+@import "tailwindcss";
+
+/* ============================================================
+   AbastecePro — Design System (Aionix)
+   Prioridade: velocidade > intuitividade > clareza > estética
+   ============================================================ */
+
+@theme {
+  /* --- Marca (azure). Deliberadamente NAO verde/vermelho: essas
+         cores ficam reservadas ao veredito LIBERADO/BLOQUEADO. --- */
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #dbe6ff;
+  --color-brand-200: #bfd2ff;
+  --color-brand-300: #93b4ff;
+  --color-brand-400: #5e8bff;
+  --color-brand-500: #2f6bf6;
+  --color-brand-600: #1b51db;
+  --color-brand-700: #163fae;
+  --color-brand-800: #16388a;
+  --color-brand-900: #17326e;
+
+  /* --- Neutros "ink" (levemente frios) --- */
+  --color-ink-0: #ffffff;
+  --color-ink-25: #fbfbfc;
+  --color-ink-50: #f6f7f9;
+  --color-ink-100: #edeef1;
+  --color-ink-200: #e1e3e8;
+  --color-ink-300: #c9cdd5;
+  --color-ink-400: #9aa0ac;
+  --color-ink-500: #6e7480;
+  --color-ink-600: #545a66;
+  --color-ink-700: #3c424d;
+  --color-ink-800: #262a32;
+  --color-ink-900: #171a20;
+  --color-ink-950: #0d0f13;
+
+  /* --- Tipografia: stack nativa. Sem webfont = sem request, sem FOUT,
+         e o app "veste" a fonte do sistema (SF no iOS, Roboto no Android). --- */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* --- Raios: escala de app, nao de site --- */
+  --radius-app: 0.75rem;
+  --radius-card: 1rem;
+  --radius-sheet: 1.5rem;
+
+  /* --- Curvas de movimento (iOS-like) --- */
+  --ease-out-app: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ============================================================
+   Tokens semanticos — claro e escuro tratados como duas
+   experiencias nativas, nao como um filtro sobre a outra.
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --bg: #f4f5f8;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f6f7f9;
+  --surface-sunken: #edeef1;
+  --border: #e1e3e8;
+  --border-strong: #c9cdd5;
+  --text: #171a20;
+  --text-secondary: #545a66;
+  --text-muted: #6e7480;
+  --text-inverse: #ffffff;
+  --brand: #1b51db;
+  --brand-fg: #ffffff;
+  --brand-hover: #163fae;
+  --brand-soft: #eef4ff;
+  --brand-on-soft: #163fae;
+  --ok: #0b8b50;
+  --ok-fg: #ffffff;
+  --ok-soft: #e7f7ef;
+  --danger: #d13438;
+  --danger-fg: #ffffff;
+  --danger-soft: #fdecec;
+  --warn: #b87700;
+  --warn-soft: #fff6e5;
+  --overlay: rgb(13 15 19 / 0.45);
+  --shadow-sm: 0 1px 2px rgb(13 15 19 / 0.06), 0 1px 1px rgb(13 15 19 / 0.04);
+  --shadow-md: 0 4px 12px rgb(13 15 19 / 0.08), 0 1px 3px rgb(13 15 19 / 0.05);
+  --shadow-lg: 0 16px 40px rgb(13 15 19 / 0.14), 0 4px 12px rgb(13 15 19 / 0.08);
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #0d0f13;
+  --bg-elevated: #171a20;
+  --surface: #171a20;
+  --surface-2: #1f232b;
+  --surface-sunken: #0a0c0f;
+  --border: #2a2f39;
+  --border-strong: #3c424d;
+  --text: #f2f3f5;
+  --text-secondary: #b4bac5;
+  --text-muted: #8a909c;
+  --text-inverse: #0d0f13;
+  --brand: #5e8bff;
+  --brand-fg: #0d0f13;
+  --brand-hover: #7ba1ff;
+  --brand-soft: #16233f;
+  --brand-on-soft: #a8c2ff;
+  --ok: #34c77b;
+  --ok-fg: #06180f;
+  --ok-soft: #10281d;
+  --danger: #ff6b70;
+  --danger-fg: #22090a;
+  --danger-soft: #2e1517;
+  --warn: #ffc24b;
+  --warn-soft: #2a1f0a;
+  --overlay: rgb(0 0 0 / 0.6);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.6);
+}
+
+/* Expoe os tokens semanticos ao Tailwind (bg-surface, text-muted, ...) */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+  --color-brand: var(--brand);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-on-soft: var(--brand-on-soft);
+  --color-ok: var(--ok);
+  --color-ok-fg: var(--ok-fg);
+  --color-ok-soft: var(--ok-soft);
+  --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+}
+
+/* ============================================================
+   App shell — elimina comportamentos tipicos de "site"
+   ============================================================ */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  /* Interface nao e texto de documento: nada de selecao acidental */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Dados que o operador pode legitimamente querer copiar (placa, documento,
+   protocolo) voltam a ser selecionaveis explicitamente. */
+.selectable,
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* Areas rolaveis: rolagem contida, sem barra visivel, com inercia */
+.scroll-area {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scroll-area::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Em telas grandes (admin desktop) uma barra discreta ajuda a orientar */
+@media (pointer: fine) and (min-width: 1024px) {
+  .scroll-area {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  .scroll-area::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+    display: block;
+  }
+  .scroll-area::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  .scroll-area::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* Safe areas (notch / barra inferior) */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Altura real do viewport movel (barra de endereco nao quebra o layout) */
+.h-screen-app {
+  height: 100dvh;
+}
+.min-h-screen-app {
+  min-height: 100dvh;
+}
+
+/* Inputs nunca disparam zoom no iOS (>=16px) e nao herdam cara de navegador */
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  color: inherit;
+}
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Foco: visivel para teclado, silencioso para toque */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-app);
+}
+
+::selection {
+  background: var(--brand-soft);
+  color: var(--brand-on-soft);
+}
+
+/* Respeita quem pediu menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

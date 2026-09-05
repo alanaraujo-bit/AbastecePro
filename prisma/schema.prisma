@@ -1,0 +1,296 @@
+// AbastecePro — modelo de dados
+// Principio central: as REGRAS de liberacao sao DADOS, nao codigo.
+// Um unico interpretador (src/lib/regras/avaliar.ts) le a tabela `Regra`
+// e produz um veredito estruturado. Mudar politica = mudar linha, nao deploy.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Acesso
+// ============================================================
+
+enum Papel {
+  ADMIN // acesso total, configura regras e usuarios
+  SUPERVISOR // opera + autoriza excecoes + consulta relatorios
+  OPERADOR // apenas o fluxo de atendimento
+}
+
+model Usuario {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  papel     Papel    @default(OPERADOR)
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now())
+  alteradoEm DateTime @updatedAt
+
+  sessoes        Sessao[]
+  abastecimentos Abastecimento[] @relation("OperadorAbastecimento")
+  autorizacoes   Abastecimento[] @relation("AutorizadorAbastecimento")
+  auditoria      Auditoria[]
+
+  @@index([ativo])
+  @@map("usuarios")
+}
+
+// Sessao opaca em tabela (nao JWT): permite revogacao imediata —
+// desativar um usuario tem de derrubar o acesso no mesmo instante —
+// e alimenta naturalmente a trilha de auditoria.
+model Sessao {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique // SHA-256 do token; o token cru so existe no cookie
+  usuarioId  String
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  expiraEm   DateTime
+  revogadaEm DateTime?
+  userAgent  String?
+  ip         String?
+  criadoEm   DateTime  @default(now())
+  usadaEm    DateTime  @default(now())
+
+  @@index([usuarioId])
+  @@index([expiraEm])
+  @@map("sessoes")
+}
+
+// ============================================================
+// Cadastro
+// ============================================================
+
+model Pessoa {
+  id             String    @id @default(cuid())
+  nome           String
+  documento      String?   @unique // CPF normalizado (so digitos)
+  telefone       String?
+  email          String?
+  observacao     String?
+  bloqueado      Boolean   @default(false)
+  motivoBloqueio String?
+  bloqueadoEm    DateTime?
+  ativo          Boolean   @default(true)
+  criadoEm       DateTime  @default(now())
+  alteradoEm     DateTime  @updatedAt
+
+  vinculos       Vinculo[]
+  abastecimentos Abastecimento[]
+  regras         Regra[]         @relation("RegraPessoaAlvo")
+
+  @@index([nome])
+  @@index([telefone])
+  @@index([bloqueado])
+  @@map("pessoas")
+}
+
+enum TipoVeiculo {
+  CARRO
+  MOTO
+  CAMINHAO
+  ONIBUS
+  MAQUINA
+  OUTRO
+}
+
+model Veiculo {
+  id     String @id @default(cuid())
+  // Placa normalizada: maiuscula, sem separador. Cobre os dois formatos
+  // vigentes no Brasil (ABC1234 antigo e ABC1D23 Mercosul) num unico
+  // campo canonico, evitando cadastro duplicado do mesmo carro.
+  placa  String @unique
+  modelo String?
+  marca  String?
+  cor    String?
+  ano    Int?
+  tipo   TipoVeiculo @default(CARRO)
+
+  bloqueado      Boolean   @default(false)
+  motivoBloqueio String?
+  bloqueadoEm    DateTime?
+  ativo          Boolean   @default(true)
+  criadoEm       DateTime  @default(now())
+  alteradoEm     DateTime  @updatedAt
+
+  vinculos       Vinculo[]
+  abastecimentos Abastecimento[]
+  regras         Regra[]         @relation("RegraVeiculoAlvo")
+
+  @@index([bloqueado])
+  @@map("veiculos")
+}
+
+model Vinculo {
+  id         String   @id @default(cuid())
+  pessoaId   String
+  veiculoId  String
+  pessoa     Pessoa   @relation(fields: [pessoaId], references: [id], onDelete: Cascade)
+  veiculo    Veiculo  @relation(fields: [veiculoId], references: [id], onDelete: Cascade)
+  // O condutor apresentado por padrao quando a placa e lida.
+  principal  Boolean  @default(false)
+  ativo      Boolean  @default(true)
+  criadoEm   DateTime @default(now())
+  alteradoEm DateTime @updatedAt
+
+  @@unique([pessoaId, veiculoId])
+  @@index([veiculoId])
+  @@map("vinculos")
+}
+
+// ============================================================
+// Regras configuraveis
+// ============================================================
+
+enum EscopoRegra {
+  GLOBAL // teto para o posto inteiro
+  PESSOA // por pessoa (todas, ou uma especifica via alvoPessoaId)
+  VEICULO // por veiculo (todos, ou um especifico via alvoVeiculoId)
+}
+
+enum MetricaRegra {
+  ABASTECIMENTOS // contagem de atendimentos
+  LITROS
+  VALOR
+}
+
+enum JanelaRegra {
+  DIA // dia civil corrente
+  SEMANA // semana civil (segunda a domingo)
+  MES // mes civil
+  HORAS // janela deslizante de N horas
+}
+
+enum AcaoRegra {
+  BLOQUEAR // impede o abastecimento
+  AVISAR // libera, mas alerta o operador
+}
+
+model Regra {
+  id        String  @id @default(cuid())
+  nome      String
+  descricao String?
+  ativo     Boolean @default(true)
+  // Menor = avaliada antes. Determina qual motivo aparece primeiro
+  // na tela de bloqueio quando mais de uma regra estoura.
+  prioridade Int    @default(100)
+
+  escopo  EscopoRegra
+  metrica MetricaRegra
+  janela  JanelaRegra
+  // Usado apenas quando janela = HORAS.
+  janelaHoras Int?
+  limite      Decimal    @db.Decimal(12, 2)
+  acao        AcaoRegra  @default(BLOQUEAR)
+  // Mensagem mostrada ao operador. Suporta {limite}, {atual}, {janela}.
+  mensagem    String?
+
+  // Alvo opcional: sem alvo, a regra vale para todos daquele escopo.
+  alvoPessoaId  String?
+  alvoPessoa    Pessoa?  @relation("RegraPessoaAlvo", fields: [alvoPessoaId], references: [id], onDelete: Cascade)
+  alvoVeiculoId String?
+  alvoVeiculo   Veiculo? @relation("RegraVeiculoAlvo", fields: [alvoVeiculoId], references: [id], onDelete: Cascade)
+
+  criadoEm   DateTime @default(now())
+  alteradoEm DateTime @updatedAt
+
+  @@index([ativo, prioridade])
+  @@index([alvoPessoaId])
+  @@index([alvoVeiculoId])
+  @@map("regras")
+}
+
+// ============================================================
+// Atendimento
+// ============================================================
+
+enum ResultadoAbastecimento {
+  LIBERADO
+  BLOQUEADO
+  AUTORIZADO_EXCECAO // bloqueado pelas regras, liberado por quem tem permissao
+}
+
+model Abastecimento {
+  id String @id @default(cuid())
+
+  // Gerada no cliente no inicio do atendimento. O operador esta na rua,
+  // com sinal instavel, e vai tocar duas vezes: a segunda chamada devolve
+  // o mesmo registro em vez de criar outro.
+  chaveIdempotencia String @unique
+
+  pessoaId   String?
+  pessoa     Pessoa?  @relation(fields: [pessoaId], references: [id], onDelete: SetNull)
+  veiculoId  String?
+  veiculo    Veiculo? @relation(fields: [veiculoId], references: [id], onDelete: SetNull)
+  operadorId String
+  operador   Usuario  @relation("OperadorAbastecimento", fields: [operadorId], references: [id])
+
+  // Guardamos a placa como digitada/lida, alem do vinculo, para nao perder
+  // o rastro quando o veiculo ainda nao existia no cadastro.
+  placa       String
+  litros      Decimal? @db.Decimal(10, 3)
+  valor       Decimal? @db.Decimal(10, 2)
+  combustivel String?
+  hodometro   Int?
+  observacao  String?
+
+  fotoChave String? // chave no bucket; nunca uma URL publica
+
+  resultado ResultadoAbastecimento
+
+  // Motivo estruturado (nao string solta): a tela de BLOQUEADO precisa
+  // mostrar qual regra, qual limite, quanto ja foi consumido.
+  motivo Json?
+  // Snapshot das regras vigentes no instante da decisao. Sem isso, auditar
+  // um atendimento meses depois falha se a regra tiver sido editada.
+  regrasSnapshot Json?
+
+  autorizadoPorId String?
+  autorizadoPor   Usuario? @relation("AutorizadorAbastecimento", fields: [autorizadoPorId], references: [id], onDelete: SetNull)
+  justificativa   String?
+
+  criadoEm DateTime @default(now())
+
+  @@index([criadoEm])
+  @@index([pessoaId, criadoEm])
+  @@index([veiculoId, criadoEm])
+  @@index([resultado, criadoEm])
+  @@index([placa])
+  @@map("abastecimentos")
+}
+
+// ============================================================
+// Auditoria e configuracao
+// ============================================================
+
+model Auditoria {
+  id         String   @id @default(cuid())
+  usuarioId  String?
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  // Texto livre e proposital: novas acoes nao devem exigir migracao.
+  acao       String // ex.: "pessoa.criar", "regra.editar", "abastecimento.autorizar"
+  entidade   String
+  entidadeId String?
+  dados      Json?
+  ip         String?
+  userAgent  String?
+  criadoEm   DateTime @default(now())
+
+  @@index([criadoEm])
+  @@index([entidade, entidadeId])
+  @@index([usuarioId, criadoEm])
+  @@map("auditoria")
+}
+
+model Config {
+  chave      String   @id
+  valor      Json
+  alteradoEm DateTime @updatedAt
+
+  @@map("config")
+}
