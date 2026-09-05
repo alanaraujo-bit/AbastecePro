@@ -369,3 +369,12 @@ input[type="number"] {
 .anim-sheet {
   animation: sheet-in 300ms var(--ease-out-app) both;
 }
+
+@keyframes gaveta-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}

@@ -7,6 +7,26 @@ export function cn(...inputs: ClassValue[]) {
 
 /* ---------- Formatacao (pt-BR) ---------- */
 
+/**
+ * Valores numericos que chegam do banco.
+ *
+ * O Prisma devolve colunas Decimal como objetos `Decimal`, nao como number —
+ * eles atravessam o app inteiro (litros, valor, somas). Aceitar aqui evita
+ * espalhar `Number(...)` por cada uso e o risco de esquecer um.
+ */
+export type Numerico =
+  | number
+  | string
+  | { toString(): string }
+  | null
+  | undefined;
+
+function paraNumero(v: Numerico): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v.toString());
+  return Number.isFinite(n) ? n : null;
+}
+
 const fmtMoeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -16,19 +36,19 @@ const fmtNumero = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 3,
 });
 
-export function moeda(v: number | string | null | undefined): string {
-  if (v === null || v === undefined || v === "") return "—";
-  return fmtMoeda.format(Number(v));
+export function moeda(v: Numerico): string {
+  const n = paraNumero(v);
+  return n === null ? "—" : fmtMoeda.format(n);
 }
 
-export function litros(v: number | string | null | undefined): string {
-  if (v === null || v === undefined || v === "") return "—";
-  return `${fmtNumero.format(Number(v))} L`;
+export function litros(v: Numerico): string {
+  const n = paraNumero(v);
+  return n === null ? "—" : `${fmtNumero.format(n)} L`;
 }
 
-export function numero(v: number | string | null | undefined): string {
-  if (v === null || v === undefined || v === "") return "—";
-  return fmtNumero.format(Number(v));
+export function numero(v: Numerico): string {
+  const n = paraNumero(v);
+  return n === null ? "—" : fmtNumero.format(n);
 }
 
 export function dataHora(d: Date | string | null | undefined): string {

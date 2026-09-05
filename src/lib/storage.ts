@@ -130,6 +130,11 @@ export async function apagarFoto(chave: string): Promise<void> {
   }
 }
 
+export function usandoBucket(): boolean {
+  return usaS3;
+}
+
 export function descricaoArmazenamento(): string {
-  return usaS3 ? `bucket S3 (${BUCKET})` : "disco local (.storage/)";
+  // Sem o nome do bucket: a rota de saude e consultada sem autenticacao.
+  return usaS3 ? "bucket S3 compativel" : "disco local (.storage/)";
 }

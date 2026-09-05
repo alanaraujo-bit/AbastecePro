@@ -158,6 +158,30 @@ export async function exigirAdmin(): Promise<UsuarioSessao> {
   return u;
 }
 
+/**
+ * Guarda das telas que definem a POLITICA (regras, usuarios, configuracao).
+ *
+ * Supervisor opera e autoriza excecoes, mas nao pode reescrever as regras
+ * que limitam as proprias autorizacoes dele — isso anularia o controle.
+ * Precisa ser aplicada tanto na pagina quanto em cada rota de mutacao:
+ * proteger so a pagina esconde o botao, nao fecha o endpoint.
+ */
+export async function exigirConfigurador(): Promise<UsuarioSessao> {
+  const u = await exigirUsuario();
+  if (!podeConfigurar(u.papel)) redirect("/admin");
+  return u;
+}
+
+/** Versao para rotas de API: devolve erro em vez de redirecionar. */
+export async function exigirPapelApi(
+  checagem: (p: Papel) => boolean,
+): Promise<{ usuario: UsuarioSessao } | { erro: string; status: number }> {
+  const u = await sessaoAtual();
+  if (!u) return { erro: "Não autenticado.", status: 401 };
+  if (!checagem(u.papel)) return { erro: "Sem permissão.", status: 403 };
+  return { usuario: u };
+}
+
 /* ---------- Permissoes ---------- */
 
 export function podeAcessarAdmin(papel: Papel): boolean {
