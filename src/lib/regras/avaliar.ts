@@ -38,8 +38,8 @@ export type BloqueioCadastral = {
 
 export type Veredito = {
   liberado: boolean;
-  /** Bloqueio manual em pessoa/veiculo — precede qualquer regra de limite. */
-  cadastral: BloqueioCadastral | null;
+  /** Bloqueios manuais em pessoa/veiculo — precedem qualquer regra de limite. */
+  cadastrais: BloqueioCadastral[];
   bloqueios: MotivoRegra[];
   avisos: MotivoRegra[];
   /** Regras ativas no instante da decisao, para auditoria posterior. */
@@ -91,13 +91,27 @@ function idDoEscopo(regra: Regra, alvo: AlvoAvaliacao): string | null {
   return null;
 }
 
+// Numeros que chegam ao operador sempre em pt-BR: "150,28", nunca "150.28".
+const fmtBR = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
+const fmtBRL = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
 function interpolar(
   modelo: string,
-  d: { limite: number; atual: number; janela: string; nome: string },
+  d: {
+    limite: number;
+    atual: number;
+    restante: number;
+    janela: string;
+    nome: string;
+  },
 ): string {
   return modelo
-    .replace(/\{limite\}/g, String(d.limite))
-    .replace(/\{atual\}/g, String(d.atual))
+    .replace(/\{limite\}/g, fmtBR.format(d.limite))
+    .replace(/\{atual\}/g, fmtBR.format(d.atual))
+    .replace(/\{restante\}/g, fmtBR.format(d.restante))
     .replace(/\{janela\}/g, d.janela)
     .replace(/\{nome\}/g, d.nome);
 }
@@ -132,21 +146,24 @@ export async function avaliarRegras(
       : null,
   ]);
 
-  let cadastral: BloqueioCadastral | null = null;
+  // Os dois podem estar bloqueados ao mesmo tempo; o operador precisa
+  // saber de ambos para explicar a situacao de uma vez so.
+  const cadastrais: BloqueioCadastral[] = [];
   if (pessoa?.bloqueado) {
-    cadastral = {
+    cadastrais.push({
       tipo: "PESSOA",
       nome: pessoa.nome,
       motivo: pessoa.motivoBloqueio,
       desde: pessoa.bloqueadoEm,
-    };
-  } else if (veiculo?.bloqueado) {
-    cadastral = {
+    });
+  }
+  if (veiculo?.bloqueado) {
+    cadastrais.push({
       tipo: "VEICULO",
       nome: veiculo.placa,
       motivo: veiculo.motivoBloqueio,
       desde: veiculo.bloqueadoEm,
-    };
+    });
   }
 
   /* --- 2. Regras ativas aplicaveis ------------------------------------- */
@@ -237,6 +254,7 @@ export async function avaliarRegras(
         ? interpolar(r.mensagem, {
             limite,
             atual,
+            restante: Math.max(0, limite - atual),
             janela: janelaTxt,
             nome: r.nome,
           })
@@ -248,8 +266,8 @@ export async function avaliarRegras(
   }
 
   return {
-    liberado: !cadastral && bloqueios.length === 0,
-    cadastral,
+    liberado: cadastrais.length === 0 && bloqueios.length === 0,
+    cadastrais,
     bloqueios,
     avisos,
     snapshot: {
@@ -283,10 +301,21 @@ function mensagemPadrao(
 
   if (r.metrica === "ABASTECIMENTOS") {
     const n = limite === 1 ? "1 abastecimento" : `${limite} abastecimentos`;
-    return `${sujeito} já usou ${atual} de ${n} permitidos ${janela}.`;
+    return `${sujeito} já usou ${fmtBR.format(atual)} de ${n} permitidos ${janela}.`;
   }
+
+  // O saldo e o unico numero acionavel aqui: e ele que permite ao operador
+  // dizer ao motorista quanto ainda da para abastecer, sem chamar ninguem.
+  const restante = Math.max(0, limite - atual);
+
   if (r.metrica === "LITROS") {
-    return `${sujeito} já consumiu ${atual} L do limite de ${limite} L ${janela}.`;
+    return (
+      `${sujeito} já consumiu ${fmtBR.format(atual)} L do limite de ` +
+      `${fmtBR.format(limite)} L ${janela}. Restam ${fmtBR.format(restante)} L.`
+    );
   }
-  return `${sujeito} já consumiu R$ ${atual.toFixed(2)} do limite de R$ ${limite.toFixed(2)} ${janela}.`;
+  return (
+    `${sujeito} já consumiu ${fmtBRL.format(atual)} do limite de ` +
+    `${fmtBRL.format(limite)} ${janela}. Restam ${fmtBRL.format(restante)}.`
+  );
 }

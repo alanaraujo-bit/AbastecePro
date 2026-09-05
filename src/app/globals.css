@@ -294,3 +294,78 @@ input[type="number"] {
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================
+   Movimento — curto e direcional. Transicao de app precisa
+   informar de onde a coisa veio, nao enfeitar.
+   ============================================================ */
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes subir {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* Veredito: cresce um toque alem do tamanho final e assenta. E o unico
+   lugar do app com movimento "elastico" — a resposta LIBERADO/BLOQUEADO
+   merece registrar fisicamente que algo foi decidido. */
+@keyframes veredito-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.anim-subir {
+  animation: subir 260ms var(--ease-out-app) both;
+}
+.anim-fade {
+  animation: fade-in 200ms var(--ease-out-app) both;
+}
+.anim-veredito {
+  animation: veredito-in 420ms var(--ease-out-app) both;
+}
+.anim-sheet {
+  animation: sheet-in 300ms var(--ease-out-app) both;
+}
