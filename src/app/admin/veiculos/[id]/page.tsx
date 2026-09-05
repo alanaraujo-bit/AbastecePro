@@ -21,6 +21,7 @@ import {
   EtiquetaResultado,
 } from "@/components/admin/ui";
 import { BotaoBloqueio } from "@/components/admin/bloqueio";
+import { BotaoExcluir } from "@/components/admin/excluir";
 import { FormularioVeiculo } from "../formulario";
 import { GestorVinculos } from "./vinculos";
 import { inicioDaJanela } from "@/lib/regras/janelas";
@@ -135,6 +136,12 @@ export default async function VeiculoDetalhe({
               id={veiculo.id}
               nome={formatarPlaca(veiculo.placa)}
               bloqueado={veiculo.bloqueado}
+            />
+            <BotaoExcluir
+              tipo="veiculo"
+              id={veiculo.id}
+              nome={formatarPlaca(veiculo.placa)}
+              temHistorico={totalHistorico > 0}
             />
           </>
         }

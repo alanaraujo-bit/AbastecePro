@@ -116,6 +116,7 @@ export default async function RelatoriosPage({
       <Conteudo className="flex flex-col gap-5">
         <AbasFiltro
           chave="periodo"
+          padrao="30"
           opcoes={[
             { valor: "7", rotulo: "7 dias" },
             { valor: "30", rotulo: "30 dias" },

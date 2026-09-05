@@ -24,6 +24,7 @@ import {
   EtiquetaResultado,
 } from "@/components/admin/ui";
 import { BotaoBloqueio } from "@/components/admin/bloqueio";
+import { BotaoExcluir } from "@/components/admin/excluir";
 import { FormularioPessoa } from "../formulario";
 import { inicioDaJanela } from "@/lib/regras/janelas";
 
@@ -138,6 +139,12 @@ export default async function PessoaDetalhe({
               id={pessoa.id}
               nome={pessoa.nome}
               bloqueado={pessoa.bloqueado}
+            />
+            <BotaoExcluir
+              tipo="pessoa"
+              id={pessoa.id}
+              nome={pessoa.nome}
+              temHistorico={totalHistorico > 0}
             />
           </>
         }

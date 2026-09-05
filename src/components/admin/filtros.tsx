@@ -89,12 +89,19 @@ export function BuscaFiltro({
 export function AbasFiltro({
   chave,
   opcoes,
+  padrao = "",
 }: {
   chave: string;
   opcoes: { valor: string; rotulo: string }[];
+  /**
+   * Valor em vigor quando o parâmetro não está na URL. Sem isto, uma tela
+   * que já filtra por 30 dias por padrão mostraria nenhuma pílula acesa —
+   * o cabeçalho diria uma coisa e os controles, outra.
+   */
+  padrao?: string;
 }) {
   const { params, aplicar } = useFiltroUrl();
-  const atual = params.get(chave) ?? "";
+  const atual = params.get(chave) ?? padrao;
 
   return (
     <div className="flex flex-wrap gap-1.5">
