@@ -151,33 +151,84 @@
 
 /* ============================================================
    App shell — elimina comportamentos tipicos de "site"
+
+   IMPORTANTE: estas regras de elemento vivem em @layer base de propósito.
+   CSS sem camada vence qualquer @layer — inclusive utilities. Solto,
+   `button { color: inherit }` anulava todo `text-*` aplicado a botões
+   (o texto do botão primário ficava com a cor do body, não a do token) e
+   `font: inherit` anulava os tamanhos de fonte. Dentro de base, as
+   utilitárias voltam a ganhar, que é o comportamento correto.
    ============================================================ */
-* {
-  -webkit-tap-highlight-color: transparent;
-}
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
 
-html {
-  height: 100%;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  touch-action: manipulation;
-}
+  html {
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    touch-action: manipulation;
+  }
 
-body {
-  height: 100%;
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overscroll-behavior: none;
-  /* Interface nao e texto de documento: nada de selecao acidental */
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
+  body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+    /* Interface nao e texto de documento: nada de selecao acidental */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Inputs nunca disparam zoom no iOS (>=16px) e nao herdam cara de navegador */
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  input[type="search"]::-webkit-search-decoration,
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Foco: visivel para teclado, silencioso para toque */
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: var(--radius-app);
+  }
+
+  ::selection {
+    background: var(--brand-soft);
+    color: var(--brand-on-soft);
+  }
 }
 
 /* Dados que o operador pode legitimamente querer copiar (placa, documento,
@@ -239,48 +290,6 @@ textarea {
 }
 .min-h-screen-app {
   min-height: 100dvh;
-}
-
-/* Inputs nunca disparam zoom no iOS (>=16px) e nao herdam cara de navegador */
-input,
-textarea,
-select,
-button {
-  font: inherit;
-  color: inherit;
-}
-input,
-textarea,
-select {
-  font-size: 16px;
-}
-
-input[type="search"]::-webkit-search-decoration,
-input[type="search"]::-webkit-search-cancel-button {
-  -webkit-appearance: none;
-}
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-input[type="number"] {
-  -moz-appearance: textfield;
-}
-
-/* Foco: visivel para teclado, silencioso para toque */
-:focus {
-  outline: none;
-}
-:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
-  border-radius: var(--radius-app);
-}
-
-::selection {
-  background: var(--brand-soft);
-  color: var(--brand-on-soft);
 }
 
 /* Respeita quem pediu menos movimento */
