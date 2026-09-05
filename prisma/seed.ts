@@ -97,11 +97,18 @@ const REGRAS = [
     mensagem: "Este veículo abasteceu há menos de 6 horas.",
   },
   {
-    nome: "Teto semanal de 200 L por pessoa",
+    // 400 L cobre uma frota mista: um caminhão enche 160 L de uma vez, e um
+    // teto de 200 L por pessoa bloquearia o motorista dele na segunda ida.
+    // Regras só RESTRINGEM — não existe isenção por alvo —, então o teto
+    // geral precisa caber no maior veículo e as exceções vêm de regras
+    // dirigidas, mais apertadas, como a de baixo.
+    nome: "Teto semanal de 400 L por pessoa",
+    descricao:
+      "Teto geral da frota. Ajuste conforme o perfil real de consumo do cliente.",
     escopo: "PESSOA" as const,
     metrica: "LITROS" as const,
     janela: "SEMANA" as const,
-    limite: 200,
+    limite: 400,
     acao: "BLOQUEAR" as const,
     prioridade: 30,
   },
@@ -185,6 +192,10 @@ async function main() {
   }
 
   console.log("→ regras");
+  // O teto semanal foi renomeado; a versão antiga ficaria ativa em paralelo.
+  await prisma.regra.deleteMany({
+    where: { nome: "Teto semanal de 200 L por pessoa" },
+  });
   for (const r of REGRAS) {
     const existente = await prisma.regra.findFirst({ where: { nome: r.nome } });
     if (existente) {
@@ -194,31 +205,99 @@ async function main() {
     }
   }
 
+  // Regra dirigida a UM veículo: mostra que dá para apertar o limite de um
+  // registro específico sem mexer na política geral.
+  const ducato = veiculos.find((v) => v.placa === "PWE1D34");
+  if (ducato) {
+    const nomeRegra = "Limite reforçado do Ducato";
+    const dados = {
+      nome: nomeRegra,
+      descricao:
+        "Exemplo de regra dirigida: vale só para este veículo, sem alterar o teto geral.",
+      escopo: "VEICULO" as const,
+      metrica: "LITROS" as const,
+      janela: "SEMANA" as const,
+      limite: 150,
+      acao: "AVISAR" as const,
+      prioridade: 50,
+      alvoVeiculoId: ducato.id,
+      mensagem:
+        "Este veículo passou de {limite} L na semana ({atual} L). Confirme com a frota.",
+    };
+    const existe = await prisma.regra.findFirst({ where: { nome: nomeRegra } });
+    if (existe) await prisma.regra.update({ where: { id: existe.id }, data: dados });
+    else await prisma.regra.create({ data: dados });
+  }
+
   console.log("→ histórico");
   const operador = await prisma.usuario.findUniqueOrThrow({
     where: { email: "operador@aionix.com.br" },
   });
-  const jaTem = await prisma.abastecimento.count();
+
+  // Regerar o histórico quando pedido: RESEED=1 npm run db:seed
+  if (process.env.RESEED === "1") {
+    const apagados = await prisma.abastecimento.deleteMany({
+      where: { chaveIdempotencia: { startsWith: "seed-" } },
+    });
+    console.log(`   ${apagados.count} registros de seed removidos`);
+  }
+
+  // Registros feitos a mão durante testes não podem impedir a regeração:
+  // o que importa é se o histórico DE SEED existe.
+  const jaTem = await prisma.abastecimento.count({
+    where: { chaveIdempotencia: { startsWith: "seed-" } },
+  });
   if (jaTem === 0) {
+    /*
+     * O histórico precisa ser COERENTE COM AS REGRAS que ele demonstra.
+     *
+     * Gerar dois abastecimentos do mesmo veículo no mesmo dia, ou estourar
+     * o teto semanal, faz o sistema exibir um passado que ele próprio diz
+     * ser impossível — e a demonstração abre com quase toda placa
+     * bloqueada, escondendo justamente o caminho feliz.
+     *
+     * Por isso: no máximo um abastecimento por veículo por dia e volume
+     * compatível com o tipo, mantendo o consumo semanal por pessoa abaixo
+     * do teto de 200 L definido nas regras.
+     */
     const combustiveis = ["Diesel S10", "Gasolina comum", "Etanol", "Diesel S500"];
+
+    const VOLUME: Record<string, [number, number]> = {
+      MOTO: [8, 14],
+      CARRO: [28, 55],
+      OUTRO: [40, 70],
+      CAMINHAO: [90, 160],
+      ONIBUS: [90, 160],
+      MAQUINA: [60, 110],
+    };
+
+    const condutorDoVeiculo = new Map<string, string>();
+    for (const v of veiculos) {
+      const vinculo = await prisma.vinculo.findFirst({ where: { veiculoId: v.id } });
+      if (vinculo) condutorDoVeiculo.set(v.id, vinculo.pessoaId);
+    }
+
     const registros = [];
-    // 45 dias de historico, para o dashboard e os relatorios terem forma.
     for (let d = 45; d >= 1; d--) {
-      const porDia = 2 + Math.floor(Math.random() * 4);
-      for (let k = 0; k < porDia; k++) {
-        const v = veiculos[Math.floor(Math.random() * veiculos.length)];
-        const vinculo = await prisma.vinculo.findFirst({
-          where: { veiculoId: v.id },
-        });
-        if (!vinculo) continue;
-        const litros = Number((25 + Math.random() * 90).toFixed(2));
+      // Poucos veículos por dia: cada um abastece a cada 3–4 dias.
+      const doDia = [...veiculos].sort(() => Math.random() - 0.5).slice(0, 2);
+      for (const v of doDia) {
+        const pessoaId = condutorDoVeiculo.get(v.id);
+        if (!pessoaId) continue;
+        const [min, max] = VOLUME[v.tipo] ?? VOLUME.CARRO;
+        const litros = Number((min + Math.random() * (max - min)).toFixed(2));
         const precoLitro = 5.4 + Math.random() * 1.4;
         const quando = new Date();
         quando.setDate(quando.getDate() - d);
-        quando.setHours(7 + Math.floor(Math.random() * 11), Math.floor(Math.random() * 60), 0, 0);
+        quando.setHours(
+          7 + Math.floor(Math.random() * 11),
+          Math.floor(Math.random() * 60),
+          0,
+          0,
+        );
         registros.push({
-          chaveIdempotencia: `seed-${d}-${k}-${v.id}`,
-          pessoaId: vinculo.pessoaId,
+          chaveIdempotencia: `seed-${d}-${v.id}`,
+          pessoaId,
           veiculoId: v.id,
           operadorId: operador.id,
           placa: v.placa,
@@ -234,7 +313,7 @@ async function main() {
     await prisma.abastecimento.createMany({ data: registros, skipDuplicates: true });
     console.log(`   ${registros.length} abastecimentos`);
   } else {
-    console.log(`   ${jaTem} já existentes — mantidos`);
+    console.log(`   ${jaTem} já existentes (use RESEED=1 para regerar)`);
   }
 
   console.log("\n✓ seed concluído\n");
