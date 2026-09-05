@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { sessaoAtual, podeAcessarAdmin } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria";
 import { normalizarPlaca, formatarPlaca } from "@/lib/placa";
+import { lerConfig } from "@/lib/config";
 import type { Prisma } from "@/generated/prisma";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,21 @@ function campo(v: unknown): string {
 function num(v: unknown): string {
   if (v === null || v === undefined) return "";
   return String(v).replace(".", ",");
+}
+
+/**
+ * Texto livre em pedaço de nome de arquivo.
+ *
+ * `NFD` separa a letra do acento e `\p{Diacritic}` remove só o acento —
+ * "Posto Boa Vião" vira "posto-boa-viao", não "posto-boa-vio".
+ */
+function paraSlug(v: string): string {
+  return v
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
 }
 
 const ROTULO_RESULTADO: Record<string, string> = {
@@ -129,10 +145,15 @@ export async function GET(req: Request) {
   });
 
   const data = new Date().toISOString().slice(0, 10);
+  const { organizacao } = await lerConfig();
+  // Nome do arquivo com a organização: quem recebe o CSV por e-mail
+  // precisa saber de onde ele veio sem abrir.
+  const nomeArquivo = `abastecimentos-${paraSlug(organizacao)}-${data}.csv`;
+
   return new Response(csv, {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="abastecimentos-${data}.csv"`,
+      "content-disposition": `attachment; filename="${nomeArquivo}"`,
       "cache-control": "no-store",
     },
   });

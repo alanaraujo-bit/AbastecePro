@@ -32,6 +32,8 @@ export function EtapaRegistro({
   foto,
   aoFotografar,
   autorizacao,
+  litrosObrigatorios,
+  fotoObrigatoria,
   aoVoltar,
   aoConcluir,
   aoAvisar,
@@ -43,6 +45,8 @@ export function EtapaRegistro({
   foto: { arquivo: File; url: string } | null;
   aoFotografar: (f: File | null) => void;
   autorizacao: string | null;
+  litrosObrigatorios: boolean;
+  fotoObrigatoria: boolean;
   aoVoltar: () => void;
   aoConcluir: (r: ResumoFinal) => void;
   aoAvisar: (t: { titulo: string; descricao?: string; variante?: "sucesso" | "erro" | "aviso" | "info" }) => void;
@@ -85,8 +89,12 @@ export function EtapaRegistro({
 
   async function enviar() {
     if (enviando) return;
-    if (!litrosNum) {
+    if (litrosObrigatorios && !litrosNum) {
       setErro("Informe quantos litros foram abastecidos.");
+      return;
+    }
+    if (fotoObrigatoria && !foto) {
+      setErro("Anexe a foto do atendimento para concluir.");
       return;
     }
     setErro(null);
@@ -205,6 +213,9 @@ export function EtapaRegistro({
               className="mb-1.5 block text-sm font-medium text-text-secondary"
             >
               Litros abastecidos
+              {!litrosObrigatorios && (
+                <span className="font-normal text-text-muted"> (opcional)</span>
+              )}
             </label>
             {/* Campo grande e teclado decimal: é o dado que o operador
                 digita em toda operação. */}
@@ -318,7 +329,7 @@ export function EtapaRegistro({
               onClick={() => inputFoto.current?.click()}
             >
               <Camera className="size-5" />
-              Anexar foto
+              {fotoObrigatoria ? "Anexar foto (obrigatória)" : "Anexar foto"}
             </Button>
           )}
 

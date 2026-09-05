@@ -6,6 +6,7 @@ import { sessaoAtual, podeAutorizarExcecao } from "@/lib/auth";
 import { avaliarRegras } from "@/lib/regras/avaliar";
 import { registrarAuditoria } from "@/lib/auditoria";
 import { normalizarPlaca, placaValida } from "@/lib/placa";
+import { lerConfig } from "@/lib/config";
 import { Prisma } from "@/generated/prisma";
 
 const Corpo = z.object({
@@ -58,6 +59,22 @@ export async function POST(req: Request) {
   const placa = normalizarPlaca(d.placa);
   if (!placaValida(placa)) {
     return NextResponse.json({ erro: "Placa inválida." }, { status: 422 });
+  }
+
+  // A mesma exigência que a tela aplica, repetida aqui: validação só no
+  // cliente não é barreira, é sugestão.
+  const config = await lerConfig();
+  if (config.litrosObrigatorios && d.litros == null) {
+    return NextResponse.json(
+      { erro: "Informe quantos litros foram abastecidos." },
+      { status: 422 },
+    );
+  }
+  if (config.fotoObrigatoria && !d.fotoChave) {
+    return NextResponse.json(
+      { erro: "Anexe a foto do atendimento para concluir." },
+      { status: 422 },
+    );
   }
 
   /* --- Reavaliacao. A consulta anterior nao sabia quantos litros seriam

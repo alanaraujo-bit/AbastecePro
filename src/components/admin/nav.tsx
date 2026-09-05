@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   Smartphone,
+  Settings,
 } from "lucide-react";
 import { Marca, Wordmark } from "@/components/marca";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -61,6 +62,12 @@ const GRUPOS: { titulo: string; itens: Item[] }[] = [
       },
       { href: "/admin/auditoria", rotulo: "Auditoria", Icone: ScrollText },
       { href: "/admin/relatorios", rotulo: "Relatórios", Icone: BarChart3 },
+      {
+        href: "/admin/configuracoes",
+        rotulo: "Configurações",
+        Icone: Settings,
+        soAdmin: true,
+      },
     ],
   },
 ];

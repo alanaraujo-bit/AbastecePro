@@ -34,10 +34,14 @@ export function Atendimento({
   podeAutorizar,
   recentes,
   combustiveis,
+  litrosObrigatorios,
+  fotoObrigatoria,
 }: {
   podeAutorizar: boolean;
   recentes: Recente[];
   combustiveis: string[];
+  litrosObrigatorios: boolean;
+  fotoObrigatoria: boolean;
 }) {
   const { mostrar } = useToast();
 
@@ -208,6 +212,8 @@ export function Atendimento({
             setFoto(f ? { arquivo: f, url: URL.createObjectURL(f) } : null);
           }}
           autorizacao={autorizacao}
+          litrosObrigatorios={litrosObrigatorios}
+          fotoObrigatoria={fotoObrigatoria}
           aoVoltar={() => setEtapa("veredito")}
           aoConcluir={concluir}
           aoAvisar={mostrar}

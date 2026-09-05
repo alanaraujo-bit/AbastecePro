@@ -5,7 +5,10 @@ import type { JanelaRegra } from "@/generated/prisma";
  * opera o posto. Todas as fronteiras de janela sao calculadas no fuso do
  * negocio, nao no do container.
  */
-export const FUSO_PADRAO = "America/Sao_Paulo";
+// Configurável por ambiente, não por banco: é infraestrutura, muda quase
+// nunca, e lê-lo do banco custaria uma consulta dentro do caminho crítico
+// de avaliação das regras.
+export const FUSO_PADRAO = process.env.TZ_NEGOCIO || "America/Sao_Paulo";
 
 /** Diferenca entre o relogio de parede em `tz` e UTC, no instante `d`. */
 function deslocamentoMs(d: Date, tz: string): number {

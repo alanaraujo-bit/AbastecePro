@@ -1,5 +1,6 @@
 import { exigirUsuario, podeAutorizarExcecao } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { lerConfig } from "@/lib/config";
 import { Atendimento } from "./atendimento";
 
 export const metadata = { title: "Atendimento" };
@@ -9,7 +10,8 @@ export const dynamic = "force-dynamic";
 export default async function OperadorPage() {
   const u = await exigirUsuario();
 
-  const [recentes, combustiveis] = await Promise.all([
+  const [config, recentes, combustiveis] = await Promise.all([
+    lerConfig(),
     prisma.abastecimento.findMany({
       where: { resultado: { in: ["LIBERADO", "AUTORIZADO_EXCECAO"] } },
       orderBy: { criadoEm: "desc" },
@@ -37,6 +39,8 @@ export default async function OperadorPage() {
   return (
     <Atendimento
       podeAutorizar={podeAutorizarExcecao(u.papel)}
+      litrosObrigatorios={config.litrosObrigatorios}
+      fotoObrigatoria={config.fotoObrigatoria}
       recentes={recentes.map((r) => ({
         id: r.id,
         placa: r.placa,

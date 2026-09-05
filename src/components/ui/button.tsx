@@ -58,9 +58,18 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           // O recuo ao toque e o que faz o botao responder como app,
           // e nao como link de pagina.
           "active:scale-[0.97]",
-          "disabled:pointer-events-none disabled:opacity-45",
+          "disabled:pointer-events-none",
           VARIANTES[variante],
           TAMANHOS[tamanho],
+          // Indisponivel vira neutro, nao "azul mais claro": so baixar a
+          // opacidade deixa um primario desabilitado ainda parecendo
+          // clicavel, e o operador toca a toa.
+          disabled &&
+            !carregando &&
+            "!bg-surface-sunken !text-text-muted !shadow-none !border-transparent",
+          // Carregando mantem a cor do botao: ele continua sendo a acao
+          // em curso, so que ocupada.
+          carregando && "opacity-80",
           larguraTotal && "w-full",
           className,
         )}

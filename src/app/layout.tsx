@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeScript } from "@/components/theme-script";
 import { ToastProvider } from "@/components/ui/toast";
+import { Conexao } from "@/components/conexao";
 
 export const metadata: Metadata = {
   title: {
@@ -54,7 +55,10 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <Conexao />
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );
