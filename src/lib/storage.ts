@@ -35,7 +35,10 @@ function s3(): S3Client {
     clienteS3 = new S3Client({
       region: process.env.S3_REGION || "auto",
       endpoint: process.env.S3_ENDPOINT || undefined,
-      forcePathStyle: true,
+      // Buckets da Railway usam URL virtual-hosted (nome como subdomínio),
+      // que é o padrão do SDK. Buckets antigos e alguns provedores exigem
+      // path-style — por isso a variável de escape.
+      forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
       credentials: {
         accessKeyId: process.env.S3_ACCESS_KEY_ID!,
         secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
