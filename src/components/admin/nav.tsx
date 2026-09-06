@@ -236,7 +236,7 @@ export function AdminNav({
               <p className="truncate text-xs text-text-muted">{email}</p>
             </div>
             <ThemeToggle compacto />
-            <MenuUsuario nome={nome} papel={papel} email={email} />
+            <MenuUsuario nome={nome} papel={papel} email={email} acima />
           </div>
         </div>
       </aside>

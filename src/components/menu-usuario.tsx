@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Loader2 } from "lucide-react";
-import { iniciais } from "@/lib/utils";
+import { LogOut, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { cn, iniciais } from "@/lib/utils";
 
 const ROTULO_PAPEL: Record<string, string> = {
   ADMIN: "Administrador",
@@ -15,14 +15,23 @@ export function MenuUsuario({
   nome,
   papel,
   email,
+  acima = false,
 }: {
   nome: string;
   papel: string;
   email: string;
+  /**
+   * Abre o painel para cima. Obrigatorio quando o gatilho fica no rodape de
+   * um container ancorado na base: a moldura do app usa `overflow-hidden`,
+   * entao um menu que desce a partir dali e recortado e some — o clique
+   * parece nao fazer nada.
+   */
+  acima?: boolean;
 }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [saindo, setSaindo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
   const raiz = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,10 +52,21 @@ export function MenuUsuario({
 
   async function sair() {
     setSaindo(true);
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/login");
-    router.refresh();
+    setErro(null);
+    try {
+      const r = await fetch("/api/auth/logout", { method: "POST" });
+      // Sem esta checagem a falha some: o redirect acontece, o middleware ve
+      // o cookie ainda vivo e devolve o usuario pra ca, preso no spinner.
+      if (!r.ok) throw new Error(String(r.status));
+      router.replace("/login");
+      router.refresh();
+    } catch {
+      setErro("Nao foi possivel sair. Tente de novo.");
+      setSaindo(false);
+    }
   }
+
+  const Seta = acima ? ChevronUp : ChevronDown;
 
   return (
     <div ref={raiz} className="relative">
@@ -56,15 +76,31 @@ export function MenuUsuario({
         aria-haspopup="menu"
         aria-expanded={aberto}
         aria-label={`Conta de ${nome}`}
-        className="ml-0.5 flex size-9 items-center justify-center rounded-full bg-brand-soft text-[0.8125rem] font-semibold text-brand-on-soft transition-transform active:scale-95"
+        className="ml-0.5 flex items-center gap-0.5 rounded-full pr-1 transition-transform active:scale-95"
       >
-        {iniciais(nome)}
+        <span className="flex size-9 items-center justify-center rounded-full bg-brand-soft text-[0.8125rem] font-semibold text-brand-on-soft">
+          {iniciais(nome)}
+        </span>
+        {/* A seta e o que diz que isto abre um menu: so as iniciais nao
+            anunciam nada, e quem procura "sair" nao pensa em clicar nelas. */}
+        <Seta
+          aria-hidden
+          className={cn(
+            "size-3.5 shrink-0 text-text-muted transition-transform duration-150",
+            aberto && "rotate-180",
+          )}
+        />
       </button>
 
       {aberto && (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-60 origin-top-right overflow-hidden rounded-card border border-border bg-bg-elevated shadow-[var(--shadow-lg)] motion-safe:animate-[menu-in_160ms_var(--ease-out-app)]"
+          className={cn(
+            "absolute right-0 z-50 w-60 overflow-hidden rounded-card border border-border bg-bg-elevated shadow-[var(--shadow-lg)]",
+            acima
+              ? "bottom-[calc(100%+0.5rem)] origin-bottom-right motion-safe:animate-[menu-in-cima_160ms_var(--ease-out-app)]"
+              : "top-[calc(100%+0.5rem)] origin-top-right motion-safe:animate-[menu-in_160ms_var(--ease-out-app)]",
+          )}
         >
           <div className="border-b border-border px-3.5 py-3">
             <p className="truncate text-sm font-semibold">{nome}</p>
@@ -87,6 +123,14 @@ export function MenuUsuario({
             )}
             Sair
           </button>
+          {erro && (
+            <p
+              role="alert"
+              className="border-t border-border px-3.5 py-2 text-xs text-danger"
+            >
+              {erro}
+            </p>
+          )}
         </div>
       )}
     </div>
