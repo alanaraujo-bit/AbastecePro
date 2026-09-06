@@ -146,21 +146,17 @@ export function Atendimento({
   }, []);
 
   /**
-   * A verificação dispara sozinha para placa DIGITADA.
+   * A verificação dispara sozinha assim que a placa fica válida.
    *
-   * Vale só para digitação: uma placa vinda da leitura da foto precisa
-   * passar pelos olhos de quem opera antes de virar consulta.
+   * Economiza um toque no caminho mais percorrido do produto, e é só
+   * leitura — disparar por engano não custa nada: corrigido um caractere,
+   * a verificação refaz sozinha.
    */
-  const [origemPlaca, setOrigemPlaca] = useState<"digitada" | "foto">(
-    "digitada",
-  );
-
   useEffect(() => {
-    if (origemPlaca !== "digitada") return;
     if (placa.length !== 7 || !placaValida(placa)) return;
     const t = setTimeout(() => verificar(placa), 140);
     return () => clearTimeout(t);
-  }, [placa, origemPlaca, verificar]);
+  }, [placa, verificar]);
 
   /**
    * Trocar a placa invalida o que se sabia sobre a anterior.
@@ -170,9 +166,8 @@ export function Atendimento({
    * é o tipo de erro que passa despercebido porque a tela continua
    * plausível.
    */
-  function trocarPlaca(v: string, origem: "digitada" | "foto") {
+  function trocarPlaca(v: string) {
     setPlaca(normalizarPlaca(v));
-    setOrigemPlaca(origem);
     setConsulta(null);
     setVereditoTardio(null);
     setErro(null);
@@ -182,7 +177,6 @@ export function Atendimento({
     abortRef.current?.abort();
     if (foto) URL.revokeObjectURL(foto.url);
     setPlaca("");
-    setOrigemPlaca("digitada");
     setDados(VAZIO);
     setConsulta(null);
     setVereditoTardio(null);
@@ -318,8 +312,7 @@ export function Atendimento({
       ) : (
         <EtapaLancamento
           placa={placa}
-          aoMudarPlaca={(v) => trocarPlaca(v, "digitada")}
-          aoLerPlaca={(v) => trocarPlaca(v, "foto")}
+          aoMudarPlaca={trocarPlaca}
           consulta={consulta}
           vereditoTardio={vereditoTardio}
           consultando={consultando}

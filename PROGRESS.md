@@ -30,13 +30,11 @@ Rota `/admin/liberar`, dentro do painel: `lançamento → comprovante`.
 > precisar cadastrar isso antes, aí é mais burocrático e dá mais trabalho"*.
 > As três telas viraram uma. Ver `DECISIONS.md`, D15.
 
-- ✅ **Leitura da placa pela foto, no próprio aparelho** — sem chave de API e
-  sem custo: fotografa, enquadra na moldura, o sistema lê e diz o quanto
-  confia (certeza / dúvida com os caracteres fracos apontados / falha)
-- ✅ A leitura **nunca** dispara a consulta sozinha; a consulta automática
-  vale só para placa digitada
-- ✅ Campo de placa com correção de O/0, I/1 e S/5 **por posição** — a mesma
-  função serve à digitação e ao OCR
+- ✅ Campo de placa com correção de O/0, I/1 e S/5 **por posição**
+- ✅ Verificação dispara sozinha assim que a placa fica válida
+- ✅ Foto opcional, anexada ao registro como comprovante
+- ❌ **Leitura automática da placa — removida.** Implementada, testada com
+  placa real e medida: nenhuma configuração leu. Ver `DECISIONS.md`, D11
 - ✅ A verificação não é etapa: dispara sozinha com a placa e responde
   **"já foi liberado?"** ali mesmo — data, em nome de quem e por quem
 - ✅ Bloqueio cadastral (pessoa **e** veículo, ambos listados) e por regra,
@@ -153,10 +151,9 @@ Nenhum destes bloqueia a demonstração; todos são decisões conscientes.
 - **Testes automatizados.** A verificação desta versão foi manual e visual.
   O primeiro alvo natural de teste unitário é `src/lib/regras/` — placas,
   janelas e o interpretador são funções puras e é onde um erro custa caro.
-- **Precisão do OCR em campo.** A leitura no aparelho está implementada e
-  funciona; o que ninguém mediu ainda é a taxa de acerto com foto de sol a
-  pino, contraluz e placa suja. Se não convencer, a troca é pontual — ver
-  `BLOCKERS.md`, B1.
+- **Leitura automática da placa.** Tentada e removida — a medição está em
+  `DECISIONS.md`, D11. Voltaria só como modelo de visão por API, que é
+  decisão de custo (~R$ 0,0065/foto), não de implementação.
 - **Prestação de contas do posto.** Não há tela para lançar depois quantos
   litros o papel virou. Se o cliente quiser controle de gasto, é aí que
   entra.

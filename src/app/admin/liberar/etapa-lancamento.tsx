@@ -6,9 +6,7 @@ import {
   Loader2,
   X,
   WifiOff,
-  ScanLine,
   CheckCircle2,
-  AlertTriangle,
   ChevronDown,
   TicketCheck,
   Ban,
@@ -27,23 +25,8 @@ import {
   mascararTelefone,
   tempoRelativo,
 } from "@/lib/utils";
-import {
-  aquecerOcr,
-  lerPlacaDaFoto,
-  type LeituraPlaca,
-  type Recorte,
-} from "@/lib/ocr-placa";
-import { RecortePlaca } from "./recorte-placa";
 import type { ConsultaResposta, VereditoCliente } from "@/lib/tipos";
 import type { Recente } from "./atendimento";
-
-/** A placa lida já existe no cadastro? É a confirmação mais forte possível. */
-async function placaConhecida(placa: string): Promise<boolean> {
-  const r = await fetch(`/api/veiculos/buscar?q=${encodeURIComponent(placa)}`);
-  if (!r.ok) return false;
-  const d = await r.json();
-  return Boolean(d.veiculos?.some((v: { placa: string }) => v.placa === placa));
-}
 
 export type DadosLancamento = {
   nome: string;
@@ -68,11 +51,14 @@ export type DadosLancamento = {
  * fica válida e aparece como um aviso ali, entre a placa e o botão. Assim a
  * pergunta que se faz de verdade — *essa placa já veio aqui?* — se responde
  * sem sair do lugar onde se está preenchendo.
+ *
+ * A foto é COMPROVANTE, não entrada de dados: ela é guardada com o registro
+ * e aparece no detalhe. Houve uma tentativa de ler a placa a partir dela;
+ * ver `DECISIONS.md`, D11, para por que foi removida.
  */
 export function EtapaLancamento({
   placa,
   aoMudarPlaca,
-  aoLerPlaca,
   consulta,
   vereditoTardio,
   consultando,
@@ -87,8 +73,6 @@ export function EtapaLancamento({
 }: {
   placa: string;
   aoMudarPlaca: (v: string) => void;
-  /** Placa vinda da foto: preenche o campo, mas nunca dispara a consulta. */
-  aoLerPlaca: (v: string) => void;
   consulta: ConsultaResposta | null;
   /** Recusa que só apareceu ao registrar — ver `atendimento.tsx`. */
   vereditoTardio: VereditoCliente | null;
@@ -104,9 +88,6 @@ export function EtapaLancamento({
   recentes: Recente[];
 }) {
   const inputFoto = useRef<HTMLInputElement>(null);
-  const [recortando, setRecortando] = useState(false);
-  const [lendo, setLendo] = useState(false);
-  const [leitura, setLeitura] = useState<LeituraPlaca | null>(null);
   const [detalhes, setDetalhes] = useState(false);
   const [justificativa, setJustificativa] = useState("");
   const [erroJust, setErroJust] = useState<string | null>(null);
@@ -121,16 +102,6 @@ export function EtapaLancamento({
   const bloqueado = Boolean(veredito && !veredito.liberado);
   const conhecida = Boolean(veiculo);
 
-  async function ler(recorte: Recorte) {
-    if (!foto) return;
-    setLendo(true);
-    const r = await lerPlacaDaFoto(foto.url, recorte, placaConhecida);
-    setLeitura(r);
-    if (r.placa) aoLerPlaca(r.placa);
-    setLendo(false);
-    setRecortando(false);
-  }
-
   function registrar() {
     if (!bloqueado) {
       aoRegistrar(null);
@@ -142,17 +113,6 @@ export function EtapaLancamento({
       return;
     }
     aoRegistrar(j);
-  }
-
-  if (recortando && foto) {
-    return (
-      <RecortePlaca
-        url={foto.url}
-        lendo={lendo}
-        aoConfirmar={ler}
-        aoCancelar={() => setRecortando(false)}
-      />
-    );
   }
 
   const podeRegistrar = completa && !placaInvalida && dados.nome.trim().length >= 3;
@@ -172,10 +132,7 @@ export function EtapaLancamento({
           <div className="mt-6">
             <PlacaInput
               valor={placa}
-              aoMudar={(v) => {
-                setLeitura(null);
-                aoMudarPlaca(v);
-              }}
+              aoMudar={aoMudarPlaca}
               autoFoco
               invalido={placaInvalida}
               desabilitado={salvando}
@@ -191,10 +148,7 @@ export function EtapaLancamento({
               capture="environment"
               className="sr-only"
               onChange={(e) => {
-                const f = e.target.files?.[0] ?? null;
-                aoFotografar(f);
-                setLeitura(null);
-                if (f) setRecortando(true);
+                aoFotografar(e.target.files?.[0] ?? null);
                 // Permite refotografar o mesmo arquivo sem o input ignorar.
                 e.target.value = "";
               }}
@@ -209,20 +163,13 @@ export function EtapaLancamento({
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">Foto anexada</p>
-                  <button
-                    type="button"
-                    onClick={() => setRecortando(true)}
-                    className="text-xs font-medium text-brand underline-offset-2 hover:underline"
-                  >
-                    Ler a placa de novo
-                  </button>
+                  <p className="truncate text-xs text-text-muted">
+                    Fica guardada com o registro
+                  </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    aoFotografar(null);
-                    setLeitura(null);
-                  }}
+                  onClick={() => aoFotografar(null)}
                   aria-label="Remover foto"
                   className="flex size-9 items-center justify-center rounded-app text-text-muted transition-colors hover:bg-surface-2 hover:text-text active:scale-95"
                 >
@@ -234,22 +181,15 @@ export function EtapaLancamento({
                 type="button"
                 variante="secundario"
                 larguraTotal
-                onClick={() => {
-                  // Só aqui vale carregar o reconhecedor: são alguns MB, e
-                  // quem digita a placa não deve pagar por eles.
-                  aquecerOcr();
-                  inputFoto.current?.click();
-                }}
+                onClick={() => inputFoto.current?.click()}
               >
                 <Camera className="size-5" />
-                Fotografar placa
+                Anexar foto (opcional)
               </Button>
             )}
           </div>
 
-          {leitura && <AvisoLeitura leitura={leitura} placa={placa} />}
-
-          {placaInvalida && !leitura && (
+          {placaInvalida && (
             <p className="mt-4 text-center text-sm text-danger anim-fade">
               Placa inválida. Use ABC-1234 ou ABC1D23.
             </p>
@@ -569,71 +509,6 @@ function AvisoSituacao({
           ))}
         </ul>
       )}
-    </div>
-  );
-}
-
-/**
- * O que a leitura da foto devolveu, em três estados.
- *
- * Nenhum deles consulta sozinho: mesmo com nota cheia, o que aparece é um
- * pedido de conferência. Errar a placa aqui liberaria combustível no nome
- * do carro errado.
- */
-function AvisoLeitura({
-  leitura,
-  placa,
-}: {
-  leitura: LeituraPlaca;
-  placa: string;
-}) {
-  if (leitura.estado === "falha") {
-    return (
-      <div className="mt-4 flex items-start gap-2.5 rounded-app border border-border bg-surface px-3.5 py-3 text-sm anim-fade">
-        <ScanLine className="mt-0.5 size-4 shrink-0 text-text-muted" />
-        <span className="leading-snug text-text-secondary">
-          Não consegui ler a placa. Fotografe de novo mais perto e de frente —
-          ou digite no campo acima.
-        </span>
-      </div>
-    );
-  }
-
-  const certeza = leitura.estado === "certeza";
-  // Se a pessoa já corrigiu o campo, o aviso deixa de falar da leitura.
-  const intocada = placa === leitura.placa;
-
-  return (
-    <div
-      className={cn(
-        "mt-4 flex items-start gap-2.5 rounded-app border px-3.5 py-3 text-sm anim-fade",
-        certeza
-          ? "border-ok/30 bg-ok-soft text-ok"
-          : "border-warn/30 bg-warn-soft text-warn",
-      )}
-    >
-      {certeza ? (
-        <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-      ) : (
-        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-      )}
-      <div className="leading-snug">
-        {certeza ? (
-          <p>
-            Placa lida com {Math.round(leitura.confianca)}% de certeza.
-            {intocada ? " Confira antes de registrar." : ""}
-          </p>
-        ) : (
-          <p>
-            Não tenho certeza desta leitura ({Math.round(leitura.confianca)}%).
-            {leitura.fracos.length > 0 && intocada
-              ? ` Confira ${leitura.fracos.length === 1 ? "o caractere" : "os caracteres"} ${leitura.fracos
-                  .map((i) => `${i + 1}º`)
-                  .join(", ")} — ou fotografe de novo.`
-              : " Confira os caracteres ou fotografe de novo."}
-          </p>
-        )}
-      </div>
     </div>
   );
 }

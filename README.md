@@ -83,10 +83,11 @@ servidor cria pessoa, veículo e vínculo a partir do próprio lançamento.
 lançamento → comprovante
 ```
 
-A placa entra fotografada ou digitada. Digitada, a verificação dispara
-**sozinha** assim que fica válida; fotografada, **nunca** — a leitura preenche
-o campo e espera confirmação, porque errar a placa aqui liberaria combustível
-no nome do carro errado.
+A placa é digitada — campo grande, teclado numérico e correção de O/0, I/1 e
+S/5 **por posição**. A verificação dispara **sozinha** assim que a placa fica
+válida. A foto é opcional e serve como comprovante: fica guardada com o
+registro. (Houve leitura automática da placa; foi medida e removida — ver
+`DECISIONS.md`, D11.)
 
 A verificação não é etapa: o resultado aparece como aviso entre a placa e o
 botão — *já foi liberado, quando e para quem*. Bloqueado, o botão vira
@@ -114,7 +115,7 @@ prisma/
 src/
   app/
     admin/
-      liberar/           fluxo de liberação (etapa-*, recorte-placa)
+      liberar/           fluxo de liberação (etapa-*.tsx)
       ...                resto do painel
     operador/            redireciona para /admin/liberar
     api/                 rotas HTTP
@@ -123,7 +124,6 @@ src/
     admin/               componentes do painel
   lib/
     auth.ts              sessão e senhas (uma conta, sem papéis)
-    ocr-placa.ts         leitura da placa no aparelho (Tesseract em WASM)
     regras/
       avaliar.ts         ← o interpretador de regras
       janelas.ts         fronteiras de dia/semana/mês no fuso do negócio
@@ -171,7 +171,6 @@ depende de ação externa, em [`BLOCKERS.md`](./BLOCKERS.md).
 | `npm run db:seed`    | dados de demonstração + **reset da senha** |
 | `npm run db:studio`  | inspeciona o banco                     |
 | `npm run icones`     | regera os ícones do PWA a partir da marca |
-| `npm run ocr`        | copia os arquivos do Tesseract para `public/` |
 
 ---
 

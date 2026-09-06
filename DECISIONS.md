@@ -100,34 +100,46 @@ duas ficam reservadas para LIBERADO e BLOQUEADO — se a interface usasse verde
 como cor de marca, o veredito perderia força justamente na tela em que ele é
 a única coisa que importa.
 
-## D11 — OCR da placa no aparelho, e a leitura nunca consulta sozinha
+## D11 — Leitura da placa por foto: tentada, medida, removida
 
-O reconhecimento roda em WebAssembly no próprio celular (Tesseract, servido
-por `public/tesseract/` — ver `scripts/preparar-ocr.mjs`). Não há chave de
-API, não há custo por foto e não há terceiro que possa cair no meio do
-atendimento.
+A placa é **digitada**. Não há OCR, e a foto serve só como comprovante
+anexado ao registro.
 
-Três decisões que fazem isso funcionar:
+Isso foi uma remoção, não uma omissão. A leitura chegou a ser implementada
+rodando no próprio aparelho (Tesseract em WebAssembly, servido do domínio,
+sem chave de API e sem custo por foto), com recorte manual antes do
+reconhecimento e três estados de confiança na tela. Foi ao ar, foi testada
+com uma placa real — e falhou.
 
-1. **Recorte antes de reconhecer.** A câmera devolve a cena inteira, e nela a
-   placa é uma faixa pequena cercada de bordas que também parecem texto.
-   Reconhecer a foto toda erra quase sempre. Por isso existe uma moldura
-   ajustável entre a foto e a leitura.
-2. **`corrigirPlaca()` fecha o ciclo.** A correção posicional de O/0, I/1 e
-   S/5 já existia para digitação apressada — é exatamente a classe de erro
-   que OCR comete. O candidato só é aceito se, corrigido, virar placa válida.
-3. **A leitura nunca dispara a consulta.** Ela preenche o campo e declara o
-   quanto confia (certeza / dúvida com os caracteres fracos apontados /
-   falha). A consulta automática continua existindo, mas só para placa
-   **digitada**. Errar a placa aqui liberaria combustível no nome do carro
-   errado; dois segundos de conferência custam menos do que desfazer isso.
+**A medição, sobre uma foto frontal e nítida de placa de moto (FBI5551):**
 
-A precisão é a de um OCR genérico em foto de celular: boa de perto, reta e
-com luz; ruim contra o sol ou com placa suja. Daí a digitação continuar sendo
-o caminho principal e o campo nunca ficar travado. Se a taxa de acerto não
-convencer no uso real, troca-se apenas a etapa de reconhecimento por um
-modelo de visão via API — o recorte, a correção e os três estados continuam
-valendo.
+| Configuração | Leitura |
+|---|---|
+| Linha única (PSM 7) | `I` |
+| Bloco multi-linha (PSM 6) | `PRCLURITIBA` |
+| Texto esparso (PSM 11) | `1144A101111ST01110OO444` |
+| Binarizado, três limiares | `TEE|A11ATRAA|PRCURITIBA|Y|555` |
+| Recortado só nos caracteres | `LCBREBELLLBLLELE…` |
+
+Nenhuma configuração leu a placa. Três razões, e nenhuma delas se corrige
+com parâmetro:
+
+1. O modelo `eng` é treinado em texto de documento — não conhece a fonte de
+   placa brasileira.
+2. Os caracteres são em **alto-relevo**, com sombra própria; o reconhecedor
+   os lê como formas duplicadas.
+3. **Placa de moto tem duas linhas.** Metade da frota atendida é moto, e o
+   modo multi-linha foi justamente o que devolveu `PRCLURITIBA`.
+
+A alternativa é um modelo de visão por API — funciona, custa cerca de R$
+0,0065 por foto, e exige uma chave e o envio da imagem para fora. Foi
+apresentada com esses números e **recusada**: a digitação já é rápida com o
+campo grande e a correção posicional de O/0 e I/1, e não vale uma chave de
+API nem uma dependência externa no caminho crítico.
+
+O que fica registrado, para não se repetir: **Tesseract não lê placa
+brasileira.** Se a leitura automática voltar à mesa, o caminho é modelo de
+visão ou ALPR dedicado — não ajuste do que já foi tentado aqui.
 
 ## D12 — Prisma fixado na linha 6.x
 
