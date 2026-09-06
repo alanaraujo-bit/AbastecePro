@@ -4,13 +4,15 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { travarRolagem } from "@/lib/travar-rolagem";
+import { prenderFoco, focoAnterior } from "@/lib/foco";
 
 /**
  * Painel modal.
  *
- * Sobe de baixo no celular (gesto de app) e vira um cartao centrado no
+ * Sobe de baixo no celular (gesto de app) e vira um cartão centrado no
  * desktop. Deliberadamente sem cara de janela de navegador: sem borda de
- * dialogo do sistema, sem barra de titulo, sem sombra generica.
+ * diálogo do sistema, sem barra de título, sem sombra genérica.
  */
 export function Sheet({
   aberto,
@@ -20,6 +22,7 @@ export function Sheet({
   children,
   rodape,
   larguraMaxima = "max-w-md",
+  focoInicial = "campo",
 }: {
   aberto: boolean;
   aoFechar: () => void;
@@ -28,6 +31,13 @@ export function Sheet({
   children?: React.ReactNode;
   rodape?: React.ReactNode;
   larguraMaxima?: string;
+  /**
+   * Onde o foco cai ao abrir. `"campo"` põe o cursor no primeiro campo —
+   * certo para cadastrar. `"painel"` não mexe em campo nenhum: ao editar
+   * um registro que já existe, jogar o cursor no primeiro campo sugere
+   * que é ali que se deve mexer, e atrapalha quem veio trocar outra coisa.
+   */
+  focoInicial?: "campo" | "painel";
 }) {
   const painel = useRef<HTMLDivElement>(null);
 
@@ -39,20 +49,42 @@ export function Sheet({
     }
     document.addEventListener("keydown", esc);
 
-    // Congela a rolagem de fundo: no celular, o conteudo atras rolando
-    // enquanto o painel esta aberto e a coisa que mais denuncia "site".
-    const overflowAntes = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Congela a rolagem de fundo: no celular, o conteúdo atrás rolando
+    // enquanto o painel está aberto é a coisa que mais denuncia "site".
+    const destravar = travarRolagem();
 
-    // Foco entra no painel para leitor de tela e navegacao por teclado.
-    const t = setTimeout(() => painel.current?.focus(), 40);
+    // O foco inicial é decidido aqui, e não por `autoFocus` nos campos.
+    // Depender do `autoFocus` deixava o resultado à mercê da ordem em que
+    // React monta e desmonta efeitos; e é aqui que dá para escolher bem:
+    //
+    //   - tem campo de texto? o cursor vai para o primeiro, que é o que o
+    //     formulário quer;
+    //   - não tem? fica no próprio painel. Nunca no primeiro botão — em
+    //     um painel de confirmação isso deixaria uma ação destrutiva a um
+    //     Enter de distância.
+    const t = setTimeout(() => {
+      const p = painel.current;
+      if (!p) return;
+      const campo =
+        focoInicial === "campo"
+          ? p.querySelector<HTMLElement>(
+              "input:not([disabled]):not([type=hidden]), textarea:not([disabled]), select:not([disabled])",
+            )
+          : null;
+      (campo ?? p).focus();
+    }, 40);
+
+    const soltarFoco = painel.current
+      ? prenderFoco(painel.current, focoAnterior())
+      : () => {};
 
     return () => {
       document.removeEventListener("keydown", esc);
-      document.body.style.overflow = overflowAntes;
+      destravar();
+      soltarFoco();
       clearTimeout(t);
     };
-  }, [aberto, aoFechar]);
+  }, [aberto, aoFechar, focoInicial]);
 
   if (!aberto || typeof document === "undefined") return null;
 

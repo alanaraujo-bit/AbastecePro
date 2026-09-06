@@ -214,7 +214,6 @@ export function GestorVinculos({
             sufixo={
               buscando ? <Loader2 className="size-4 animate-spin" /> : undefined
             }
-            autoFocus
           />
 
           {resultados.length > 0 && (

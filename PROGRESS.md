@@ -51,7 +51,8 @@ concluído`. Consulta dispara sozinha quando a placa fica válida.
 
 - ✅ Deploy automático na Railway a cada push, com migrações no pre-deploy
 - ✅ Fotos em bucket S3, servidas apenas por rota autenticada
-- ✅ PWA instalável (manifesto + ícones + service worker)
+- ✅ PWA instalável (manifesto + ícones + service worker que **não** cacheia
+  API nem HTML autenticado)
 - ✅ Aviso de conexão perdida
 - ✅ `/api/saude` confirmando banco e destino das fotos
 
@@ -89,6 +90,31 @@ concluído`. Consulta dispara sozinha quando a placa fica válida.
     inacessível.
 15. **`forcePathStyle` fixo** quebraria os buckets novos da Railway, que
     usam URL virtual-hosted.
+16. **O service worker guardava HTML de página autenticada.** As telas
+    trazem nome e placa dentro; ficavam no Cache Storage depois do logout e
+    apareceriam para o próximo operador de um tablet compartilhado — a
+    mesma exposição que a rota autenticada de fotos existe para evitar.
+    Agora só `/_next/static/` é cacheado, e sem rede a navegação mostra uma
+    tela de "sem conexão" em vez de uma cópia antiga.
+17. **O foco escapava dos painéis modais.** O Tab dentro de um painel
+    aberto continuava andando pelos links da página atrás, sem nada na tela
+    indicando isso, e fechar o painel largava o foco no começo da página.
+    `aria-modal` promete resolver isso e nenhum navegador resolve sozinho
+    fora de `<dialog>`.
+18. **Trava de rolagem sem contagem.** Cada camada salvava e restaurava
+    `overflow` por conta própria: com a foto ampliada aberta por cima de
+    outro painel, fechar a de cima devolvia a rolagem com a de baixo ainda
+    aberta. Agora a trava é contada e só o último a sair destrava.
+19. **A gaveta do admin não travava a rolagem** — o menu cobria a tela e a
+    página rolava atrás dele. E o estado dela não sumia ao alargar a
+    janela: abrir o menu no celular e girar para paisagem larga deixava a
+    rolagem travada por um menu invisível.
+20. **O foco inicial dos painéis dependia de `autoFocus` nos campos**, o
+    que deixava o resultado à mercê da ordem em que o React monta efeitos —
+    em desenvolvimento o cursor chegava a sair do campo e voltar. Hoje o
+    painel decide: cursor no primeiro campo ao cadastrar, no próprio painel
+    ao editar ou confirmar. Nunca no primeiro botão — num painel de
+    confirmação isso deixaria uma exclusão a um Enter de distância.
 
 ---
 
@@ -112,6 +138,15 @@ Nenhum destes bloqueia a demonstração; todos são decisões conscientes.
   O primeiro alvo natural de teste unitário é `src/lib/regras/` — placas,
   janelas e o interpretador são funções puras e é onde um erro custa caro.
 - **OCR automático de placa** — ver `BLOCKERS.md`.
+
+### Verificado de forma limitada
+
+O fechamento da gaveta ao **alargar a janela** (achado 19) foi verificado
+pelo caminho equivalente — abrir a gaveta já em largura de desktop, que
+passa pelo mesmo `matchMedia` e se corrige na hora. A rotação de fato não
+deu para exercitar: a automação de navegador desta máquina não redimensiona
+a janela de forma confiável (relata sucesso e `window.innerWidth` não muda).
+Vale repetir o teste à mão num aparelho antes da demonstração.
 
 ---
 

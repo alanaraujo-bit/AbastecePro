@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ImageOff, Maximize2 } from "lucide-react";
 import { formatarPlaca } from "@/lib/placa";
+import { travarRolagem } from "@/lib/travar-rolagem";
 
 /**
  * Foto do atendimento.
@@ -28,11 +29,10 @@ export function FotoAtendimento({
     if (!ampliada) return;
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setAmpliada(false);
     document.addEventListener("keydown", esc);
-    const antes = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const destravar = travarRolagem();
     return () => {
       document.removeEventListener("keydown", esc);
-      document.body.style.overflow = antes;
+      destravar();
     };
   }, [ampliada]);
 

@@ -120,6 +120,7 @@ export function FormularioPessoa({ pessoa }: { pessoa?: PessoaForm }) {
         aberto={aberto}
         aoFechar={() => setAberto(false)}
         titulo={editando ? "Editar pessoa" : "Nova pessoa"}
+        focoInicial={editando ? "painel" : "campo"}
         rodape={
           <>
             <Button
@@ -141,7 +142,6 @@ export function FormularioPessoa({ pessoa }: { pessoa?: PessoaForm }) {
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             autoCapitalize="words"
-            autoFocus
             maxLength={120}
           />
           <Input

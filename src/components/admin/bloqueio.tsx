@@ -138,7 +138,6 @@ export function BotaoBloqueio({
             }}
             erro={erro ?? undefined}
             maxLength={300}
-            autoFocus
             placeholder="Ex.: pendência financeira em aberto."
           />
         </div>

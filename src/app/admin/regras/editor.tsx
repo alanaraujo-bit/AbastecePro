@@ -170,6 +170,7 @@ export function EditorRegra({
       aberto
       aoFechar={aoFechar}
       titulo={editando ? "Editar regra" : "Nova regra"}
+      focoInicial={editando ? "painel" : "campo"}
       descricao="A frase abaixo é exatamente o que esta regra vai fazer."
       larguraMaxima="max-w-lg"
       rodape={
@@ -189,7 +190,6 @@ export function EditorRegra({
           value={nome}
           onChange={(e) => setNome(e.target.value)}
           placeholder="Ex.: Teto semanal por pessoa"
-          autoFocus={!editando}
           maxLength={120}
         />
 

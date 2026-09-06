@@ -216,6 +216,7 @@ function EditorUsuario({
       aberto
       aoFechar={aoFechar}
       titulo={editando ? "Editar usuário" : "Novo usuário"}
+      focoInicial={editando ? "painel" : "campo"}
       rodape={
         <>
           <Button variante="secundario" larguraTotal onClick={aoFechar}>
@@ -233,7 +234,6 @@ function EditorUsuario({
           value={nome}
           onChange={(e) => setNome(e.target.value)}
           autoCapitalize="words"
-          autoFocus={!editando}
         />
         <Input
           rotulo="E-mail"
