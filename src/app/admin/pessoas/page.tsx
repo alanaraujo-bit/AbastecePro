@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Users, Ban, Car } from "lucide-react";
 
 import { prisma } from "@/lib/db";
-import { exigirAdmin } from "@/lib/auth";
+import { exigirUsuario } from "@/lib/auth";
 import { soDigitos, mascararCpf, mascararTelefone, numero, iniciais } from "@/lib/utils";
 import {
   PageHeader,
@@ -25,7 +25,7 @@ export default async function PessoasPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  await exigirAdmin();
+  await exigirUsuario();
   const sp = await searchParams;
 
   const q = sp.q?.trim() ?? "";

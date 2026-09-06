@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, Etiqueta, Vazio } from "@/components/admin/ui";
 import { useToast } from "@/components/ui/toast";
 import { Sheet } from "@/components/ui/sheet";
-import { descreverRegra } from "@/lib/regras/descrever";
+import { descreverRegra, metricaObsoleta } from "@/lib/regras/descrever";
 import { cn } from "@/lib/utils";
 import { EditorRegra } from "./editor";
 
@@ -146,6 +146,9 @@ export function ListaRegras({ regras }: { regras: RegraCliente[] }) {
                     <h3 className="text-[0.9375rem] font-semibold">{r.nome}</h3>
                     {r.acao === "AVISAR" && <Etiqueta tom="warn">Aviso</Etiqueta>}
                     {r.alvoNome && <Etiqueta tom="brand">{r.alvoNome}</Etiqueta>}
+                    {metricaObsoleta(r.metrica) && (
+                      <Etiqueta tom="danger">Sem efeito</Etiqueta>
+                    )}
                   </div>
 
                   {/* A frase é a leitura principal: quem configura precisa
@@ -153,6 +156,17 @@ export function ListaRegras({ regras }: { regras: RegraCliente[] }) {
                   <p className="mt-1 text-sm text-text-secondary">
                     {descreverRegra(r)}
                   </p>
+
+                  {/* Regra da época em que o sistema anotava a bomba. Não
+                      tem mais o que medir, e dizer isso é mais honesto do
+                      que apagá-la por conta própria. */}
+                  {metricaObsoleta(r.metrica) && (
+                    <p className="mt-1 text-sm leading-snug text-danger">
+                      Mede {r.metrica === "LITROS" ? "litros" : "valor"}, e o
+                      sistema não registra mais esses números. Esta regra não
+                      bloqueia nada — apague-a.
+                    </p>
+                  )}
 
                   {r.descricao && (
                     <p className="mt-1 text-sm leading-snug text-text-muted">

@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { exigirPapelApi, podeConfigurar } from "@/lib/auth";
+import { exigirSessaoApi } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria";
 import { lerConfig, salvarConfig } from "@/lib/config";
 
 const Corpo = z.object({
   organizacao: z.string().trim().min(2).max(80),
-  litrosObrigatorios: z.boolean(),
-  fotoObrigatoria: z.boolean(),
 });
 
 export async function PUT(req: Request) {
-  const auth = await exigirPapelApi(podeConfigurar);
+  const auth = await exigirSessaoApi();
   if ("erro" in auth) {
     return NextResponse.json({ erro: auth.erro }, { status: auth.status });
   }

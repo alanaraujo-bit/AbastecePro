@@ -1,24 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { LogOut, Loader2, ChevronDown, ChevronUp, UserCog } from "lucide-react";
 import { cn, iniciais } from "@/lib/utils";
-
-const ROTULO_PAPEL: Record<string, string> = {
-  ADMIN: "Administrador",
-  SUPERVISOR: "Supervisor",
-  OPERADOR: "Operador",
-};
 
 export function MenuUsuario({
   nome,
-  papel,
   email,
   acima = false,
 }: {
   nome: string;
-  papel: string;
   email: string;
   /**
    * Abre o painel para cima. Obrigatorio quando o gatilho fica no rodape de
@@ -105,10 +98,16 @@ export function MenuUsuario({
           <div className="border-b border-border px-3.5 py-3">
             <p className="truncate text-sm font-semibold">{nome}</p>
             <p className="mt-0.5 truncate text-xs text-text-muted">{email}</p>
-            <span className="mt-2 inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-[0.6875rem] font-medium text-text-secondary">
-              {ROTULO_PAPEL[papel] ?? papel}
-            </span>
           </div>
+          <Link
+            href="/admin/conta"
+            role="menuitem"
+            onClick={() => setAberto(false)}
+            className="flex w-full items-center gap-2.5 border-b border-border px-3.5 py-3 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-2 hover:text-text"
+          >
+            <UserCog className="size-4" />
+            Minha conta
+          </Link>
           <button
             type="button"
             role="menuitem"

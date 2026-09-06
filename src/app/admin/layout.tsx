@@ -1,4 +1,4 @@
-import { exigirAdmin } from "@/lib/auth";
+import { exigirUsuario } from "@/lib/auth";
 import { AdminNav } from "@/components/admin/nav";
 
 export default async function AdminLayout({
@@ -6,7 +6,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const u = await exigirAdmin();
+  const u = await exigirUsuario();
 
   return (
     // No mobile: barra no topo, conteúdo abaixo (coluna).
@@ -14,7 +14,7 @@ export default async function AdminLayout({
     // com a área de conteúdo rolando por conta própria — a moldura do app
     // nunca rola.
     <div className="flex h-screen-app flex-col overflow-hidden bg-bg lg:flex-row">
-      <AdminNav nome={u.nome} email={u.email} papel={u.papel} />
+      <AdminNav nome={u.nome} email={u.email} />
       <main className="scroll-area min-h-0 flex-1">{children}</main>
     </div>
   );

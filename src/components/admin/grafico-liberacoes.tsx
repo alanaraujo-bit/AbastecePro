@@ -1,28 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { cn, litros as fmtLitros, moeda } from "@/lib/utils";
+import { cn, numero } from "@/lib/utils";
 
 export type PontoDia = {
   dia: string; // YYYY-MM-DD
-  litros: number;
-  valor: number;
   qtd: number;
 };
 
 /**
- * Consumo diário.
+ * Liberações por dia.
+ *
+ * Conta papéis emitidos, não volume: quem libera nunca vê a bomba, então
+ * litro e valor não existem mais como grandeza do sistema. O que dá para
+ * medir — e o que interessa a quem controla — é quantas autorizações
+ * saíram por dia.
  *
  * Barras em flex, não SVG: acompanha a largura do contêiner sem nenhuma
- * conta de viewBox e sem distorcer em tela larga. Para 30 colunas de
- * grandeza única é a ferramenta certa — um gráfico mais elaborado aqui
- * seria peso sem leitura extra.
+ * conta de viewBox e sem distorcer em tela larga.
  */
-export function GraficoConsumo({ pontos }: { pontos: PontoDia[] }) {
+export function GraficoLiberacoes({ pontos }: { pontos: PontoDia[] }) {
   const [ativo, setAtivo] = useState<number | null>(null);
 
-  const maximo = Math.max(...pontos.map((p) => p.litros), 1);
-  const total = pontos.reduce((s, p) => s + p.litros, 0);
+  const maximo = Math.max(...pontos.map((p) => p.qtd), 1);
+  const total = pontos.reduce((s, p) => s + p.qtd, 0);
   const media = total / (pontos.length || 1);
   const destaque = ativo != null ? pontos[ativo] : null;
 
@@ -31,14 +32,12 @@ export function GraficoConsumo({ pontos }: { pontos: PontoDia[] }) {
       <div className="mb-4 flex flex-wrap items-baseline gap-x-6 gap-y-1">
         <div>
           <p className="text-xs font-medium text-text-muted">Total no período</p>
-          <p className="text-lg font-semibold tabular-nums">
-            {fmtLitros(total)}
-          </p>
+          <p className="text-lg font-semibold tabular-nums">{numero(total)}</p>
         </div>
         <div>
           <p className="text-xs font-medium text-text-muted">Média por dia</p>
           <p className="text-lg font-semibold tabular-nums">
-            {fmtLitros(Math.round(media * 100) / 100)}
+            {media.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
           </p>
         </div>
 
@@ -55,12 +54,7 @@ export function GraficoConsumo({ pontos }: { pontos: PontoDia[] }) {
             {destaque ? rotuloData(destaque.dia) : "—"}
           </p>
           <p className="text-lg font-semibold tabular-nums">
-            {destaque ? fmtLitros(destaque.litros) : "—"}
-            {destaque && destaque.valor > 0 && (
-              <span className="ml-2 text-sm font-normal text-text-secondary">
-                {moeda(destaque.valor)}
-              </span>
-            )}
+            {destaque ? numero(destaque.qtd) : "—"}
           </p>
         </div>
       </div>
@@ -83,22 +77,22 @@ export function GraficoConsumo({ pontos }: { pontos: PontoDia[] }) {
             onMouseEnter={() => setAtivo(i)}
             onFocus={() => setAtivo(i)}
             onBlur={() => setAtivo(null)}
-            aria-label={`${rotuloData(p.dia)}: ${fmtLitros(p.litros)} em ${p.qtd} abastecimento(s)`}
+            aria-label={`${rotuloData(p.dia)}: ${p.qtd} liberação(ões)`}
             className="group relative flex h-full flex-1 items-end"
           >
             <span
               className={cn(
                 "w-full rounded-t-[3px] transition-colors",
-                p.litros === 0
+                p.qtd === 0
                   ? "bg-surface-sunken"
                   : ativo === i
                     ? "bg-brand"
                     : "bg-brand/45 group-hover:bg-brand",
               )}
               style={{
-                // Dias sem movimento ganham um traço mínimo: some por
+                // Dias sem movimento ganham um traço mínimo: sumir por
                 // completo faria parecer que falta dado, não que foi zero.
-                height: p.litros === 0 ? "3px" : `${(p.litros / maximo) * 100}%`,
+                height: p.qtd === 0 ? "3px" : `${(p.qtd / maximo) * 100}%`,
               }}
             />
           </button>

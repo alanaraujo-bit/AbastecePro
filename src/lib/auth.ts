@@ -7,7 +7,6 @@ import crypto from "node:crypto";
 import { hash as argonHash, verify as argonVerify } from "@node-rs/argon2";
 
 import { prisma } from "@/lib/db";
-import { Papel } from "@/generated/prisma";
 
 export const COOKIE_SESSAO = "ap_sess";
 const DIAS_SESSAO = 30;
@@ -80,7 +79,6 @@ export type UsuarioSessao = {
   id: string;
   nome: string;
   email: string;
-  papel: Papel;
   sessaoId: string;
 };
 
@@ -103,7 +101,7 @@ export const sessaoAtual = cache(async (): Promise<UsuarioSessao | null> => {
       expiraEm: true,
       revogadaEm: true,
       usuario: {
-        select: { id: true, nome: true, email: true, papel: true, ativo: true },
+        select: { id: true, nome: true, email: true, ativo: true },
       },
     },
   });
@@ -117,7 +115,6 @@ export const sessaoAtual = cache(async (): Promise<UsuarioSessao | null> => {
     id: sessao.usuario.id,
     nome: sessao.usuario.nome,
     email: sessao.usuario.email,
-    papel: sessao.usuario.papel,
     sessaoId: sessao.id,
   };
 });
@@ -136,7 +133,7 @@ export async function encerrarSessao(): Promise<void> {
   jar.delete(COOKIE_SESSAO);
 }
 
-/** Revoga todas as sessoes de um usuario (bloqueio/troca de senha). */
+/** Revoga todas as sessoes de um usuario (troca de senha). */
 export async function revogarSessoesDoUsuario(usuarioId: string) {
   await prisma.sessao.updateMany({
     where: { usuarioId, revogadaEm: null },
@@ -144,60 +141,44 @@ export async function revogarSessoesDoUsuario(usuarioId: string) {
   });
 }
 
-/* ---------- Guardas ---------- */
+/**
+ * Derruba os OUTROS aparelhos e mantem este.
+ *
+ * E o que a conta unica precisa: o celular esquecido no balcao ou o
+ * navegador do computador antigo saem, sem que quem pediu isso perca o
+ * proprio acesso no meio da operacao.
+ */
+export async function revogarOutrasSessoes(
+  usuarioId: string,
+  sessaoAtualId: string,
+): Promise<number> {
+  const r = await prisma.sessao.updateMany({
+    where: { usuarioId, revogadaEm: null, id: { not: sessaoAtualId } },
+    data: { revogadaEm: new Date() },
+  });
+  return r.count;
+}
 
+/* ---------- Guarda ---------- */
+
+/**
+ * O sistema tem UMA conta: quem entra e o gestor, e ele ve tudo.
+ *
+ * Nao existe mais escala de permissao — nao ha operador, supervisor nem
+ * segundo administrador para separar. "Autenticado" e "autorizado" viraram
+ * a mesma pergunta, e e aqui que ela se responde.
+ */
 export async function exigirUsuario(): Promise<UsuarioSessao> {
   const u = await sessaoAtual();
   if (!u) redirect("/login");
   return u;
 }
 
-export async function exigirAdmin(): Promise<UsuarioSessao> {
-  const u = await exigirUsuario();
-  if (!podeAcessarAdmin(u.papel)) redirect("/operador");
-  return u;
-}
-
-/**
- * Guarda das telas que definem a POLITICA (regras, usuarios, configuracao).
- *
- * Supervisor opera e autoriza excecoes, mas nao pode reescrever as regras
- * que limitam as proprias autorizacoes dele — isso anularia o controle.
- * Precisa ser aplicada tanto na pagina quanto em cada rota de mutacao:
- * proteger so a pagina esconde o botao, nao fecha o endpoint.
- */
-export async function exigirConfigurador(): Promise<UsuarioSessao> {
-  const u = await exigirUsuario();
-  if (!podeConfigurar(u.papel)) redirect("/admin");
-  return u;
-}
-
 /** Versao para rotas de API: devolve erro em vez de redirecionar. */
-export async function exigirPapelApi(
-  checagem: (p: Papel) => boolean,
-): Promise<{ usuario: UsuarioSessao } | { erro: string; status: number }> {
+export async function exigirSessaoApi(): Promise<
+  { usuario: UsuarioSessao } | { erro: string; status: number }
+> {
   const u = await sessaoAtual();
   if (!u) return { erro: "Não autenticado.", status: 401 };
-  if (!checagem(u.papel)) return { erro: "Sem permissão.", status: 403 };
   return { usuario: u };
-}
-
-/* ---------- Permissoes ---------- */
-
-export function podeAcessarAdmin(papel: Papel): boolean {
-  return papel === "ADMIN" || papel === "SUPERVISOR";
-}
-
-/** Liberar um atendimento que as regras bloquearam. */
-export function podeAutorizarExcecao(papel: Papel): boolean {
-  return papel === "ADMIN" || papel === "SUPERVISOR";
-}
-
-/** Configurar regras, usuarios e parametros do sistema. */
-export function podeConfigurar(papel: Papel): boolean {
-  return papel === "ADMIN";
-}
-
-export function rotaInicial(papel: Papel): string {
-  return papel === "OPERADOR" ? "/operador" : "/admin";
 }

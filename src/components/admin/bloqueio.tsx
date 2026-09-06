@@ -41,7 +41,7 @@ export function BotaoBloqueio({
   async function aplicar(novoBloqueado: boolean) {
     if (enviando) return;
     if (novoBloqueado && motivo.trim().length < 5) {
-      setErro("Descreva o motivo — ele aparece para o operador.");
+      setErro("Descreva o motivo — ele aparece na tela de liberação.");
       return;
     }
     setErro(null);
@@ -107,7 +107,7 @@ export function BotaoBloqueio({
         aberto={aberto}
         aoFechar={() => setAberto(false)}
         titulo={`Bloquear ${tipo === "pessoa" ? "pessoa" : "veículo"}`}
-        descricao={`Todo atendimento de ${nome} passa a ser recusado até o desbloqueio. O motivo aparece na tela do operador.`}
+        descricao={`Toda liberação para ${nome} passa a ser recusada até o desbloqueio. O motivo aparece na tela de liberação.`}
         rodape={
           <>
             <Button

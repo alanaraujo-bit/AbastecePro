@@ -3,12 +3,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
-import {
-  criarSessao,
-  verificarSenha,
-  rotaInicial,
-  ipDaRequisicao,
-} from "@/lib/auth";
+import { criarSessao, verificarSenha, ipDaRequisicao } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria";
 import { checarTentativas, registrarFalha, limparTentativas } from "@/lib/rate-limit";
 
@@ -50,7 +45,7 @@ export async function POST(req: Request) {
 
   const usuario = await prisma.usuario.findUnique({
     where: { email: dados.email },
-    select: { id: true, senhaHash: true, papel: true, ativo: true, nome: true },
+    select: { id: true, senhaHash: true, ativo: true, nome: true },
   });
 
   const ok = usuario
@@ -84,7 +79,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    destino: rotaInicial(usuario.papel),
-    usuario: { nome: usuario.nome, papel: usuario.papel },
+    destino: "/admin",
+    usuario: { nome: usuario.nome },
   });
 }

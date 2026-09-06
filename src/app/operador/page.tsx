@@ -1,57 +1,12 @@
-import { exigirUsuario, podeAutorizarExcecao } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { lerConfig } from "@/lib/config";
-import { Atendimento } from "./atendimento";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Atendimento" };
-// O operador precisa sempre do estado atual do posto, nunca de cache.
-export const dynamic = "force-dynamic";
-
-export default async function OperadorPage() {
-  const u = await exigirUsuario();
-
-  const [config, recentes, combustiveis] = await Promise.all([
-    lerConfig(),
-    prisma.abastecimento.findMany({
-      where: { resultado: { in: ["LIBERADO", "AUTORIZADO_EXCECAO"] } },
-      orderBy: { criadoEm: "desc" },
-      take: 8,
-      select: {
-        id: true,
-        placa: true,
-        criadoEm: true,
-        litros: true,
-        resultado: true,
-        pessoa: { select: { nome: true } },
-      },
-    }),
-    // Sugestoes vindas do proprio historico: o posto costuma trabalhar com
-    // dois ou tres combustiveis, e digitar isso toda vez seria desperdicio.
-    prisma.abastecimento.groupBy({
-      by: ["combustivel"],
-      where: { combustivel: { not: null } },
-      _count: { combustivel: true },
-      orderBy: { _count: { combustivel: "desc" } },
-      take: 4,
-    }),
-  ]);
-
-  return (
-    <Atendimento
-      podeAutorizar={podeAutorizarExcecao(u.papel)}
-      litrosObrigatorios={config.litrosObrigatorios}
-      fotoObrigatoria={config.fotoObrigatoria}
-      recentes={recentes.map((r) => ({
-        id: r.id,
-        placa: r.placa,
-        criadoEm: r.criadoEm.toISOString(),
-        litros: r.litros ? Number(r.litros) : null,
-        resultado: r.resultado,
-        nome: r.pessoa?.nome ?? null,
-      }))}
-      combustiveis={combustiveis
-        .map((c) => c.combustivel)
-        .filter((c): c is string => Boolean(c))}
-    />
-  );
+/**
+ * A tela de atendimento virou "Liberar", dentro do painel.
+ *
+ * Este redirecionamento existe porque o PWA ja instalado guarda o atalho
+ * para /operador, e um atalho que abre em 404 e a forma mais rapida de
+ * fazer o app parecer quebrado depois de uma atualizacao.
+ */
+export default function OperadorRedirect() {
+  redirect("/admin/liberar");
 }

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { prisma } from "@/lib/db";
-import { exigirAdmin } from "@/lib/auth";
+import { exigirUsuario } from "@/lib/auth";
 import { formatarPlaca } from "@/lib/placa";
 import {
   dataHora,
@@ -82,7 +82,7 @@ export default async function AbastecimentoDetalhe({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await exigirAdmin();
+  await exigirUsuario();
   const { id } = await params;
 
   const a = await prisma.abastecimento.findUnique({
@@ -134,7 +134,7 @@ export default async function AbastecimentoDetalhe({
                 valor={a.hodometro ? `${numero(a.hodometro)} km` : "—"}
                 Icone={Gauge}
               />
-              <Dado rotulo="Operador" valor={a.operador.nome} />
+              <Dado rotulo="Liberado por" valor={a.operador.nome} />
             </dl>
 
             {a.observacao && (

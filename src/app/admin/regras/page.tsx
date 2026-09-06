@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { exigirConfigurador } from "@/lib/auth";
+import { exigirUsuario } from "@/lib/auth";
 import { PageHeader, Conteudo } from "@/components/admin/ui";
 import { ListaRegras, type RegraCliente } from "./lista";
 
@@ -7,9 +7,7 @@ export const metadata = { title: "Regras" };
 export const dynamic = "force-dynamic";
 
 export default async function RegrasPage() {
-  // Só ADMIN: supervisor autoriza exceções, mas não pode reescrever as
-  // regras que limitam as próprias autorizações dele.
-  await exigirConfigurador();
+  await exigirUsuario();
 
   const regras = await prisma.regra.findMany({
     orderBy: [{ ativo: "desc" }, { prioridade: "asc" }, { criadoEm: "asc" }],

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { sessaoAtual, podeAcessarAdmin } from "@/lib/auth";
+import { sessaoAtual } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria";
 import { normalizarPlaca, formatarPlaca } from "@/lib/placa";
 import { lerConfig } from "@/lib/config";
@@ -43,8 +43,8 @@ const ROTULO_RESULTADO: Record<string, string> = {
 
 export async function GET(req: Request) {
   const u = await sessaoAtual();
-  if (!u || !podeAcessarAdmin(u.papel)) {
-    return new Response("Sem permissão.", { status: 403 });
+  if (!u) {
+    return new Response("Não autenticado.", { status: 401 });
   }
 
   const sp = new URL(req.url).searchParams;
@@ -103,7 +103,7 @@ export async function GET(req: Request) {
     "Combustível",
     "Hodômetro",
     "Resultado",
-    "Operador",
+    "Liberado por",
     "Autorizado por",
     "Justificativa",
     "Observação",

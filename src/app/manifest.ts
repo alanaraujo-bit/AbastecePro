@@ -32,12 +32,12 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "maskable",
       },
     ],
-    // Atalho para o que o operador faz 99% das vezes: abrir e atender.
+    // Atalho para o que se faz 99% das vezes: abrir e liberar.
     shortcuts: [
       {
-        name: "Novo atendimento",
-        short_name: "Atender",
-        url: "/operador",
+        name: "Liberar abastecimento",
+        short_name: "Liberar",
+        url: "/admin/liberar",
         icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
       },
     ],

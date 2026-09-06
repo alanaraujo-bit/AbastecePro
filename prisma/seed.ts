@@ -12,26 +12,22 @@ import { hash as argonHash } from "@node-rs/argon2";
 const prisma = new PrismaClient();
 const ARGON = { memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
 
-const USUARIOS = [
-  {
-    nome: "Alan Araújo",
-    email: "admin@aionix.com.br",
-    senha: "Admin@2026",
-    papel: Papel.ADMIN,
-  },
-  {
-    nome: "Beatriz Nunes",
-    email: "supervisor@aionix.com.br",
-    senha: "Super@2026",
-    papel: Papel.SUPERVISOR,
-  },
-  {
-    nome: "Carlos Meireles",
-    email: "operador@aionix.com.br",
-    senha: "Oper@2026",
-    papel: Papel.OPERADOR,
-  },
-];
+/**
+ * A CONTA. Uma so.
+ *
+ * O sistema nao tem cadastro de usuarios nem recuperacao de senha por
+ * e-mail — quem opera e uma pessoa, e a rota de criacao foi removida de
+ * proposito. Por isso este upsert e tambem o caminho de recuperacao:
+ * perdeu a senha, roda `npm run db:seed` no servidor e ela volta a ser a
+ * daqui. A coluna `papel` continua no banco por compatibilidade com os
+ * registros antigos, mas nenhum codigo a le.
+ */
+const DONO = {
+  nome: "Alan Araújo",
+  email: "admin@aionix.com.br",
+  senha: "Admin@2026",
+  papel: Papel.ADMIN,
+};
 
 const PESSOAS = [
   { nome: "João Batista Ferreira", documento: "52998224725", telefone: "11987654321" },
@@ -70,80 +66,93 @@ const VEICULOS = [
   },
 ];
 
+/*
+ * As regras contam LIBERACOES. Litros e valor sairam do modelo: quem
+ * libera entrega um papel e nunca ve a bomba, entao uma regra de volume
+ * nao teria o que medir — e regra que nao mede libera sempre.
+ */
 const REGRAS = [
   {
-    nome: "Um abastecimento por veículo ao dia",
+    nome: "Uma liberação por veículo a cada 30 dias",
     descricao:
-      "Impede que o mesmo veículo abasteça duas vezes no mesmo dia civil.",
-    escopo: "VEICULO" as const,
-    metrica: "ABASTECIMENTOS" as const,
-    janela: "DIA" as const,
-    limite: 1,
-    acao: "BLOQUEAR" as const,
-    prioridade: 10,
-    mensagem: "Este veículo já abasteceu hoje. Limite: {limite} por dia.",
-  },
-  {
-    nome: "Intervalo mínimo de 6 horas",
-    descricao:
-      "Evita reabastecimento em sequência — normalmente indica erro de registro.",
+      "Regra principal: cada veículo recebe um papel por mês. Ajuste o intervalo conforme a política real.",
     escopo: "VEICULO" as const,
     metrica: "ABASTECIMENTOS" as const,
     janela: "HORAS" as const,
-    janelaHoras: 6,
+    janelaHoras: 720,
+    limite: 1,
+    acao: "BLOQUEAR" as const,
+    prioridade: 10,
+    mensagem:
+      "Este veículo já foi liberado nos últimos 30 dias. Limite: {limite} por período.",
+  },
+  {
+    nome: "Uma liberação por pessoa no mês",
+    descricao:
+      "Impede que a mesma pessoa retire papéis para vários veículos no mesmo mês civil.",
+    escopo: "PESSOA" as const,
+    metrica: "ABASTECIMENTOS" as const,
+    janela: "MES" as const,
     limite: 1,
     acao: "BLOQUEAR" as const,
     prioridade: 20,
-    mensagem: "Este veículo abasteceu há menos de 6 horas.",
+    mensagem: "Esta pessoa já foi atendida neste mês.",
   },
   {
-    // 400 L cobre uma frota mista: um caminhão enche 160 L de uma vez, e um
-    // teto de 200 L por pessoa bloquearia o motorista dele na segunda ida.
-    // Regras só RESTRINGEM — não existe isenção por alvo —, então o teto
-    // geral precisa caber no maior veículo e as exceções vêm de regras
-    // dirigidas, mais apertadas, como a de baixo.
-    nome: "Teto semanal de 400 L por pessoa",
+    nome: "Aviso de volume de liberações no dia",
     descricao:
-      "Teto geral da frota. Ajuste conforme o perfil real de consumo do cliente.",
-    escopo: "PESSOA" as const,
-    metrica: "LITROS" as const,
-    janela: "SEMANA" as const,
-    limite: 400,
-    acao: "BLOQUEAR" as const,
-    prioridade: 30,
-  },
-  {
-    nome: "Teto mensal de R$ 2.000 por pessoa",
-    escopo: "PESSOA" as const,
-    metrica: "VALOR" as const,
-    janela: "MES" as const,
-    limite: 2000,
-    acao: "BLOQUEAR" as const,
-    prioridade: 40,
-  },
-  {
-    nome: "Aviso de consumo alto do posto",
-    descricao:
-      "Não bloqueia: apenas alerta o operador quando o dia passa de 3.000 L.",
+      "Não bloqueia: apenas alerta quando o dia passa de 30 papéis emitidos.",
     escopo: "GLOBAL" as const,
-    metrica: "LITROS" as const,
+    metrica: "ABASTECIMENTOS" as const,
     janela: "DIA" as const,
-    limite: 3000,
+    limite: 30,
     acao: "AVISAR" as const,
     prioridade: 90,
-    mensagem: "Consumo do posto já passou de {limite} L hoje.",
+    mensagem: "Já foram emitidas mais de {limite} liberações hoje.",
   },
 ];
 
 async function main() {
-  console.log("→ usuários");
-  for (const u of USUARIOS) {
-    const senhaHash = await argonHash(u.senha, ARGON);
-    await prisma.usuario.upsert({
-      where: { email: u.email },
-      update: { nome: u.nome, papel: u.papel, ativo: true },
-      create: { nome: u.nome, email: u.email, papel: u.papel, senhaHash },
+  console.log("→ conta");
+  const senhaHash = await argonHash(DONO.senha, ARGON);
+  // A senha volta ao padrao a cada execucao: e isso que faz do seed um
+  // caminho de recuperacao, e nao so um preenchimento inicial.
+  const dono = await prisma.usuario.upsert({
+    where: { email: DONO.email },
+    update: { nome: DONO.nome, ativo: true, senhaHash },
+    create: {
+      nome: DONO.nome,
+      email: DONO.email,
+      papel: DONO.papel,
+      senhaHash,
+    },
+  });
+
+  /*
+   * Contas do modelo antigo (operador, supervisor) NÃO podem continuar
+   * vivas. Quando havia papéis, elas viam menos que o admin; agora que a
+   * permissão acabou, autenticado é autorizado — uma conta de operador
+   * esquecida passaria a abrir o painel inteiro. É escalação de privilégio
+   * criada pela própria mudança de modelo.
+   *
+   * Desativar em vez de apagar: elas assinam abastecimentos antigos
+   * (`operadorId`), e apagá-las levaria junto o histórico. `ativo: false`
+   * fecha o acesso e `sessaoAtual()` verifica isso a cada requisição.
+   */
+  const antigas = await prisma.usuario.updateMany({
+    where: { email: { not: DONO.email }, ativo: true },
+    data: { ativo: false },
+  });
+  if (antigas.count > 0) {
+    // Desativar sozinho não derruba quem já está dentro até a próxima
+    // requisição; revogar a sessão fecha a porta no mesmo instante.
+    const sessoes = await prisma.sessao.updateMany({
+      where: { usuario: { email: { not: DONO.email } }, revogadaEm: null },
+      data: { revogadaEm: new Date() },
     });
+    console.log(
+      `   ${antigas.count} conta(s) antiga(s) desativada(s), ${sessoes.count} sessão(ões) revogada(s)`,
+    );
   }
 
   console.log("→ pessoas");
@@ -192,9 +201,27 @@ async function main() {
   }
 
   console.log("→ regras");
-  // O teto semanal foi renomeado; a versão antiga ficaria ativa em paralelo.
+  // Regras da época em que o sistema anotava a bomba: medem litros ou
+  // valor, números que ninguém mais informa. Ficariam ativas sem nunca
+  // disparar — controle aparente é pior do que controle nenhum.
+  const orfas = await prisma.regra.deleteMany({
+    where: { metrica: { in: ["LITROS", "VALOR"] } },
+  });
+  if (orfas.count > 0) {
+    console.log(`   ${orfas.count} regra(s) de litros/valor removida(s)`);
+  }
+  // Regras de seed com os nomes antigos: ficariam ativas em paralelo com as
+  // novas e o veredito passaria a citar a regra errada.
   await prisma.regra.deleteMany({
-    where: { nome: "Teto semanal de 200 L por pessoa" },
+    where: {
+      nome: {
+        in: [
+          "Um abastecimento por veículo ao dia",
+          "Intervalo mínimo de 6 horas",
+          "Teto semanal de 200 L por pessoa",
+        ],
+      },
+    },
   });
   for (const r of REGRAS) {
     const existente = await prisma.regra.findFirst({ where: { nome: r.nome } });
@@ -213,16 +240,17 @@ async function main() {
     const dados = {
       nome: nomeRegra,
       descricao:
-        "Exemplo de regra dirigida: vale só para este veículo, sem alterar o teto geral.",
+        "Exemplo de regra dirigida: vale só para este veículo, sem alterar a política geral.",
       escopo: "VEICULO" as const,
-      metrica: "LITROS" as const,
-      janela: "SEMANA" as const,
-      limite: 150,
+      metrica: "ABASTECIMENTOS" as const,
+      janela: "HORAS" as const,
+      janelaHoras: 1440,
+      limite: 1,
       acao: "AVISAR" as const,
       prioridade: 50,
       alvoVeiculoId: ducato.id,
       mensagem:
-        "Este veículo passou de {limite} L na semana ({atual} L). Confirme com a frota.",
+        "Este veículo já foi liberado nos últimos 60 dias. Confirme com a frota.",
     };
     const existe = await prisma.regra.findFirst({ where: { nome: nomeRegra } });
     if (existe) await prisma.regra.update({ where: { id: existe.id }, data: dados });
@@ -230,9 +258,6 @@ async function main() {
   }
 
   console.log("→ histórico");
-  const operador = await prisma.usuario.findUniqueOrThrow({
-    where: { email: "operador@aionix.com.br" },
-  });
 
   // Regerar o histórico quando pedido: RESEED=1 npm run db:seed
   if (process.env.RESEED === "1") {
@@ -251,75 +276,65 @@ async function main() {
     /*
      * O histórico precisa ser COERENTE COM AS REGRAS que ele demonstra.
      *
-     * Gerar dois abastecimentos do mesmo veículo no mesmo dia, ou estourar
-     * o teto semanal, faz o sistema exibir um passado que ele próprio diz
-     * ser impossível — e a demonstração abre com quase toda placa
-     * bloqueada, escondendo justamente o caminho feliz.
+     * A regra principal é "uma liberação por veículo a cada 30 dias". Um
+     * passado com o mesmo veículo aparecendo toda semana mostraria um
+     * sistema que contradiz a própria política — e abriria a demonstração
+     * com quase toda placa bloqueada, escondendo o caminho feliz.
      *
-     * Por isso: no máximo um abastecimento por veículo por dia e volume
-     * compatível com o tipo, mantendo o consumo semanal por pessoa abaixo
-     * do teto de 200 L definido nas regras.
+     * Por isso: uma liberação por veículo. Metade delas há mais de 30 dias
+     * (placa livre hoje) e metade dentro da janela (placa bloqueada), para
+     * que os dois caminhos apareçam já na primeira consulta.
      */
-    const combustiveis = ["Diesel S10", "Gasolina comum", "Etanol", "Diesel S500"];
-
-    const VOLUME: Record<string, [number, number]> = {
-      MOTO: [8, 14],
-      CARRO: [28, 55],
-      OUTRO: [40, 70],
-      CAMINHAO: [90, 160],
-      ONIBUS: [90, 160],
-      MAQUINA: [60, 110],
-    };
-
     const condutorDoVeiculo = new Map<string, string>();
     for (const v of veiculos) {
       const vinculo = await prisma.vinculo.findFirst({ where: { veiculoId: v.id } });
       if (vinculo) condutorDoVeiculo.set(v.id, vinculo.pessoaId);
     }
 
-    const registros = [];
-    for (let d = 45; d >= 1; d--) {
-      // Poucos veículos por dia: cada um abastece a cada 3–4 dias.
-      const doDia = [...veiculos].sort(() => Math.random() - 0.5).slice(0, 2);
-      for (const v of doDia) {
-        const pessoaId = condutorDoVeiculo.get(v.id);
-        if (!pessoaId) continue;
-        const [min, max] = VOLUME[v.tipo] ?? VOLUME.CARRO;
-        const litros = Number((min + Math.random() * (max - min)).toFixed(2));
-        const precoLitro = 5.4 + Math.random() * 1.4;
-        const quando = new Date();
-        quando.setDate(quando.getDate() - d);
-        quando.setHours(
-          7 + Math.floor(Math.random() * 11),
-          Math.floor(Math.random() * 60),
-          0,
-          0,
-        );
-        registros.push({
-          chaveIdempotencia: `seed-${d}-${v.id}`,
-          pessoaId,
-          veiculoId: v.id,
-          operadorId: operador.id,
-          placa: v.placa,
-          litros,
-          valor: Number((litros * precoLitro).toFixed(2)),
-          combustivel: combustiveis[Math.floor(Math.random() * combustiveis.length)],
-          hodometro: 40000 + Math.floor(Math.random() * 90000),
-          resultado: "LIBERADO" as const,
-          criadoEm: quando,
-        });
-      }
-    }
+    const registros: {
+      chaveIdempotencia: string;
+      pessoaId: string;
+      veiculoId: string;
+      operadorId: string;
+      placa: string;
+      resultado: "LIBERADO";
+      criadoEm: Date;
+    }[] = [];
+    veiculos.forEach((v, i) => {
+      const pessoaId = condutorDoVeiculo.get(v.id);
+      if (!pessoaId) return;
+      // Pares: liberação recente (ainda dentro dos 30 dias, bloqueia).
+      // Ímpares: liberação antiga (janela vencida, libera).
+      const diasAtras =
+        i % 2 === 0
+          ? 3 + Math.floor(Math.random() * 20)
+          : 38 + Math.floor(Math.random() * 40);
+      const quando = new Date();
+      quando.setDate(quando.getDate() - diasAtras);
+      quando.setHours(
+        8 + Math.floor(Math.random() * 9),
+        Math.floor(Math.random() * 60),
+        0,
+        0,
+      );
+      registros.push({
+        chaveIdempotencia: `seed-${v.id}`,
+        pessoaId,
+        veiculoId: v.id,
+        operadorId: dono.id,
+        placa: v.placa,
+        resultado: "LIBERADO" as const,
+        criadoEm: quando,
+      });
+    });
     await prisma.abastecimento.createMany({ data: registros, skipDuplicates: true });
-    console.log(`   ${registros.length} abastecimentos`);
+    console.log(`   ${registros.length} liberações`);
   } else {
     console.log(`   ${jaTem} já existentes (use RESEED=1 para regerar)`);
   }
 
   console.log("\n✓ seed concluído\n");
-  for (const u of USUARIOS) {
-    console.log(`   ${u.papel.padEnd(10)} ${u.email}  senha: ${u.senha}`);
-  }
+  console.log(`   acesso: ${DONO.email}   senha: ${DONO.senha}\n`);
 }
 
 main()

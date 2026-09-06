@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { sessaoAtual, rotaInicial } from "@/lib/auth";
+import { sessaoAtual } from "@/lib/auth";
 import { Marca, Wordmark } from "@/components/marca";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AssinaturaAionix } from "@/components/assinatura-aionix";
@@ -10,7 +10,7 @@ export const metadata = { title: "Entrar" };
 
 export default async function LoginPage() {
   const u = await sessaoAtual();
-  if (u) redirect(rotaInicial(u.papel));
+  if (u) redirect("/admin");
 
   return (
     // O formulario vem primeiro no DOM: quem ja e cliente vem entrar, nao
@@ -36,10 +36,12 @@ export default async function LoginPage() {
             <FormularioLogin />
           </div>
 
-          {/* Unica linha de apoio que sobrevive: nao ha fluxo de redefinicao,
-              entao sem ela o usuario sem senha fica sem saida. */}
+          {/* Unica linha de apoio que sobrevive. O sistema tem uma conta so
+              e nao ha redefinicao por e-mail: sem esta linha, quem perde a
+              senha fica sem saida e sem saber que existe uma. */}
           <p className="mt-6 text-sm text-text-muted">
-            Esqueceu a senha? Peça a um administrador.
+            Esqueceu a senha? Ela só pode ser redefinida no servidor — fale com
+            quem cuida da instalação.
           </p>
         </div>
 

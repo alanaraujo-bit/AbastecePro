@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Car, Ban, Users } from "lucide-react";
 
 import { prisma } from "@/lib/db";
-import { exigirAdmin } from "@/lib/auth";
+import { exigirUsuario } from "@/lib/auth";
 import { formatarPlaca, normalizarPlaca } from "@/lib/placa";
 import { numero } from "@/lib/utils";
 import { PageHeader, Conteudo, Card, Vazio, Etiqueta } from "@/components/admin/ui";
@@ -29,7 +29,7 @@ export default async function VeiculosPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  await exigirAdmin();
+  await exigirUsuario();
   const sp = await searchParams;
 
   const q = sp.q?.trim() ?? "";

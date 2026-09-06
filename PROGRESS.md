@@ -9,50 +9,74 @@ Registro vivo do que está pronto, do que ficou de fora e de como retomar.
 
 ---
 
-## Estado: primeira versão completa, no ar e testada
+## Estado: modelo corrigido — um usuário, liberação como papel
 
-Tudo abaixo foi verificado **no navegador**, não apenas compilado.
+> **Mudança de modelo, setembro/2026.** A primeira versão foi construída
+> sobre uma leitura errada do negócio: três perfis e um "modo operador" que
+> imitava o frentista na pista, registrando litros e valor da bomba.
+>
+> O fluxo real é outro: **uma única pessoa** — quem gere a frota — atende no
+> balcão, consulta a placa e **libera** o abastecimento, entregando um papel.
+> Ela nunca vê a bomba. O que se registra é a autorização, não o consumo.
+>
+> O porquê de cada consequência está em `DECISIONS.md`, D11, D13 e D14.
 
-### Operador — fluxo completo
+### Liberação — uma tela
 
-Rota única, máquina de estados no cliente: `placa → veredito → registro →
-concluído`. Consulta dispara sozinha quando a placa fica válida.
+Rota `/admin/liberar`, dentro do painel: `lançamento → comprovante`.
 
-- ✅ Campo de placa com correção de O/0 e I/1 **por posição**
-- ✅ Foto pela câmera nativa (`capture="environment"`)
-- ✅ Veredito LIBERADO/BLOQUEADO com motivo estruturado, barra de consumo e
-  **saldo restante** — o número que o operador precisa para responder ao
-  motorista
-- ✅ Bloqueio cadastral (pessoa **e** veículo, ambos listados) e por regra
-- ✅ Troca de condutor com reavaliação no servidor
-- ✅ Cadastro rápido quando a placa é desconhecida
-- ✅ Registro com litros, valor, combustível, hodômetro, observação e foto
-- ✅ Reavaliação no registro (regra de volume só decide com os litros)
-- ✅ Autorização excepcional com justificativa, restrita ao perfil
-- ✅ Idempotência contra toque duplo, com chave nova a cada correção
-- ✅ Retorno automático ao início após concluir
+> **Segunda rodada, após teste com usuário.** A primeira versão do fluxo
+> ainda pedia cadastro antes do registro. Quem testou resumiu: *"não vou
+> precisar cadastrar isso antes, aí é mais burocrático e dá mais trabalho"*.
+> As três telas viraram uma. Ver `DECISIONS.md`, D15.
 
-### Administrador — painel completo
+- ✅ **Leitura da placa pela foto, no próprio aparelho** — sem chave de API e
+  sem custo: fotografa, enquadra na moldura, o sistema lê e diz o quanto
+  confia (certeza / dúvida com os caracteres fracos apontados / falha)
+- ✅ A leitura **nunca** dispara a consulta sozinha; a consulta automática
+  vale só para placa digitada
+- ✅ Campo de placa com correção de O/0, I/1 e S/5 **por posição** — a mesma
+  função serve à digitação e ao OCR
+- ✅ A verificação não é etapa: dispara sozinha com a placa e responde
+  **"já foi liberado?"** ali mesmo — data, em nome de quem e por quem
+- ✅ Bloqueio cadastral (pessoa **e** veículo, ambos listados) e por regra,
+  com motivo estruturado e barra de consumo
+- ✅ Troca de pessoa com reavaliação no servidor
+- ✅ **Cadastro nasce do lançamento** — placa, nome e telefone numa tela; o
+  resto atrás de "mais detalhes". Pessoa e veículo são criados pelo servidor
+  numa transação
+- ✅ Pessoa deduplicada por CPF e por telefone — sem isso as regras por
+  pessoa nunca disparariam
+- ✅ Recusa que só o servidor enxerga (placa nova de quem já foi atendido)
+  aparece com o motivo real, e não como erro genérico
+- ✅ **Liberar mesmo assim**, com justificativa obrigatória, para o caso que
+  as regras recusaram
+- ✅ Comprovante com protocolo curto e impressão em folha própria
+- ✅ Idempotência contra toque duplo
 
-- ✅ Dashboard com indicadores, consumo diário e ranking
-- ✅ Abastecimentos: filtros na URL, tabela no desktop, cartões no celular
-- ✅ **Detalhe do abastecimento lendo `motivo` e `regrasSnapshot`** — é esta
-  tela que torna a auditoria de decisões antigas possível
+### Painel
+
+- ✅ Dashboard contando **liberações** — por dia, por pessoa, bloqueios e
+  exceções (litros e valor sairiam sempre zero; ver D14)
+- ✅ Liberações: filtros na URL, tabela no desktop, cartões no celular
+- ✅ **Detalhe lendo `motivo` e `regrasSnapshot`** — é esta tela que torna a
+  auditoria de decisões antigas possível
 - ✅ Pessoas e veículos: CRUD, bloqueio com motivo, histórico
 - ✅ Vínculos com condutor principal único
-- ✅ **Editor de regras como frase**, com pré-visualização ao vivo
-- ✅ Usuários (ADMIN) com trava de último administrador e revogação
-  imediata de sessões
+- ✅ **Editor de regras como frase**, com pré-visualização ao vivo; regras
+  antigas de litros/valor aparecem marcadas como **sem efeito**
+- ✅ **Minha conta**: nome, e-mail, troca de senha e encerrar os outros
+  aparelhos — a rota de criar usuário foi removida, não escondida
 - ✅ Auditoria em linguagem legível
 - ✅ Relatórios por período + exportação CSV (abre direto no Excel pt-BR)
-- ✅ Configurações que mudam comportamento de verdade
 
 ### Plataforma
 
 - ✅ Deploy automático na Railway a cada push, com migrações no pre-deploy
 - ✅ Fotos em bucket S3, servidas apenas por rota autenticada
-- ✅ PWA instalável (manifesto + ícones + service worker que **não** cacheia
-  API nem HTML autenticado)
+- ✅ PWA instalável; `/operador` redireciona para `/admin/liberar`, para não
+  quebrar o atalho de quem já instalou
+- ✅ Service worker que **não** cacheia API nem HTML autenticado
 - ✅ Aviso de conexão perdida
 - ✅ `/api/saude` confirmando banco e destino das fotos
 
@@ -92,7 +116,7 @@ concluído`. Consulta dispara sozinha quando a placa fica válida.
     usam URL virtual-hosted.
 16. **O service worker guardava HTML de página autenticada.** As telas
     trazem nome e placa dentro; ficavam no Cache Storage depois do logout e
-    apareceriam para o próximo operador de um tablet compartilhado — a
+    apareceriam para quem usasse o aparelho em seguida — a
     mesma exposição que a rota autenticada de fotos existe para evitar.
     Agora só `/_next/static/` é cacheado, e sem rede a navegação mostra uma
     tela de "sem conexão" em vez de uma cópia antiga.
@@ -129,7 +153,13 @@ Nenhum destes bloqueia a demonstração; todos são decisões conscientes.
 - **Testes automatizados.** A verificação desta versão foi manual e visual.
   O primeiro alvo natural de teste unitário é `src/lib/regras/` — placas,
   janelas e o interpretador são funções puras e é onde um erro custa caro.
-- **OCR automático de placa** — ver `BLOCKERS.md`.
+- **Precisão do OCR em campo.** A leitura no aparelho está implementada e
+  funciona; o que ninguém mediu ainda é a taxa de acerto com foto de sol a
+  pino, contraluz e placa suja. Se não convencer, a troca é pontual — ver
+  `BLOCKERS.md`, B1.
+- **Prestação de contas do posto.** Não há tela para lançar depois quantos
+  litros o papel virou. Se o cliente quiser controle de gasto, é aí que
+  entra.
 
 ### Uma coisa que parecia defeito e não era
 

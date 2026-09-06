@@ -5,27 +5,23 @@ que fazer quando houver acesso.
 
 ---
 
-## B1 — OCR automático de placa (sem chave de API de visão)
+## B1 — OCR automático de placa — RESOLVIDO, sem chave de API
 
-**Estado:** contornado. Não bloqueia o produto.
+**Estado:** implementado. Não depende de mais nada.
 
-O fluxo do operador pede leitura automática da placa a partir da foto. Não há
-nenhuma chave de modelo de visão no ambiente (`ANTHROPIC_API_KEY`,
-`OPENAI_API_KEY` etc. — nenhuma presente).
+A leitura roda no próprio aparelho (Tesseract em WebAssembly, servido de
+`public/tesseract/`), sem chave de API e sem custo por foto. Fluxo: fotografa
+→ enquadra a placa numa moldura ajustável → o sistema lê e mostra o quanto
+confia → a pessoa confirma. Detalhes e porquês em `DECISIONS.md`, D11.
 
-**Como está resolvido hoje:** a foto é capturada e armazenada normalmente, e a
-digitação da placa é o caminho primário — campo grande, teclado otimizado,
-correção automática de O/0 e I/1 por posição. O reconhecimento está atrás de
-uma interface de provedor (`src/lib/ocr/`), com o provedor `manual` ativo.
+**O que sobra para você decidir:** se a taxa de acerto **no seu uso real** não
+convencer — foto contra o sol, placa suja, à noite —, a alternativa é trocar a
+etapa de reconhecimento por um modelo de visão via API (`ANTHROPIC_API_KEY`
+na Railway), a centavos por foto. Nada do que existe hoje seria jogado fora:
+o recorte, a correção posicional e os três estados de tela continuam valendo.
 
-**O que fazer quando voltar:** definir `OCR_PROVIDER=anthropic` e
-`ANTHROPIC_API_KEY=...` nas variáveis do serviço na Railway. O provedor já
-está implementado; nenhuma mudança de código é necessária.
-
-Alternativa sem custo por chamada: rodar OCR no próprio dispositivo
-(Tesseract.js / `TextDetector`). Foi descartado por ora — o modelo é pesado
-para celular comum e a precisão em placa suja/à noite é baixa, o que
-contraria a prioridade de velocidade.
+Isso é uma decisão de custo × precisão, medida com fotos suas — não um
+bloqueio técnico.
 
 ---
 

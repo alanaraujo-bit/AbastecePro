@@ -15,18 +15,12 @@ import { prisma } from "@/lib/db";
  * dentro do caminho crítico de avaliação de regras. Ele vem de `TZ_NEGOCIO`.
  */
 export type Configuracoes = {
-  /** Aparece no painel e no cabeçalho dos relatórios exportados. */
+  /** Aparece no painel, no comprovante e no cabeçalho dos relatórios. */
   organizacao: string;
-  /** Litros viram campo obrigatório no registro do abastecimento. */
-  litrosObrigatorios: boolean;
-  /** O operador não consegue concluir sem anexar a foto. */
-  fotoObrigatoria: boolean;
 };
 
 export const CONFIG_PADRAO: Configuracoes = {
   organizacao: "AbastecePro",
-  litrosObrigatorios: true,
-  fotoObrigatoria: false,
 };
 
 const CHAVE = "geral";

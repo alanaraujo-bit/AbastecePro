@@ -49,13 +49,10 @@ export type Veredito = {
 export type AlvoAvaliacao = {
   pessoaId?: string | null;
   veiculoId?: string | null;
-  /** Consumo previsto deste atendimento, quando ja conhecido. */
-  litros?: number | null;
-  valor?: number | null;
 };
 
 type ChaveConsumo = string;
-type Consumo = { abastecimentos: number; litros: number; valor: number };
+type Consumo = { abastecimentos: number };
 
 function chave(escopo: string, alvoId: string | null, desde: Date): ChaveConsumo {
   return `${escopo}:${alvoId ?? "*"}:${desde.toISOString()}`;
@@ -93,11 +90,6 @@ function idDoEscopo(regra: Regra, alvo: AlvoAvaliacao): string | null {
 
 // Numeros que chegam ao operador sempre em pt-BR: "150,28", nunca "150.28".
 const fmtBR = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
-const fmtBRL = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
-
 function interpolar(
   modelo: string,
   d: {
@@ -171,7 +163,13 @@ export async function avaliarRegras(
     where: { ativo: true },
     orderBy: [{ prioridade: "asc" }, { criadoEm: "asc" }],
   });
-  const aplicaveis = todas.filter((r) => regraSeAplica(r, alvo));
+  const aplicaveis = todas
+    // Litros e valor deixaram de existir: quem libera entrega um papel e
+    // nunca ve a bomba. Uma regra dessas nunca mais mediria nada, e uma
+    // regra que nao mede libera sempre — pior do que nao existir, porque
+    // aparenta controle. Ficam de fora ate serem apagadas no painel.
+    .filter((r) => r.metrica === "ABASTECIMENTOS")
+    .filter((r) => regraSeAplica(r, alvo));
 
   /* --- 3. Consumo por janela.
          Varias regras costumam compartilhar o mesmo recorte (ex.: tres
@@ -195,18 +193,13 @@ export async function avaliarRegras(
         where: {
           ...filtroDoEscopo(regra, alvo),
           criadoEm: { gte: desde },
-          // Tentativas bloqueadas nao consomem cota: so contam os
-          // atendimentos que de fato aconteceram.
+          // Tentativas bloqueadas nao consomem cota: so contam as
+          // liberacoes que de fato foram emitidas.
           resultado: { in: ["LIBERADO", "AUTORIZADO_EXCECAO"] },
         },
         _count: { _all: true },
-        _sum: { litros: true, valor: true },
       });
-      const c: Consumo = {
-        abastecimentos: agg._count._all,
-        litros: Number(agg._sum.litros ?? 0),
-        valor: Number(agg._sum.valor ?? 0),
-      };
+      const c: Consumo = { abastecimentos: agg._count._all };
       return [k, c] as const;
     }),
   );
@@ -222,19 +215,8 @@ export async function avaliarRegras(
     if (!consumo) continue;
 
     const limite = Number(r.limite);
-    let atual: number;
-    let proposto: number;
-
-    if (r.metrica === "ABASTECIMENTOS") {
-      atual = consumo.abastecimentos;
-      proposto = 1; // este atendimento conta como um
-    } else if (r.metrica === "LITROS") {
-      atual = consumo.litros;
-      proposto = alvo.litros ?? 0;
-    } else {
-      atual = consumo.valor;
-      proposto = alvo.valor ?? 0;
-    }
+    const atual = consumo.abastecimentos;
+    const proposto = 1; // esta liberacao conta como uma
 
     if (atual + proposto <= limite) continue;
 
@@ -299,23 +281,6 @@ function mensagemPadrao(
         ? "Este veículo"
         : "O posto";
 
-  if (r.metrica === "ABASTECIMENTOS") {
-    const n = limite === 1 ? "1 abastecimento" : `${limite} abastecimentos`;
-    return `${sujeito} já usou ${fmtBR.format(atual)} de ${n} permitidos ${janela}.`;
-  }
-
-  // O saldo e o unico numero acionavel aqui: e ele que permite ao operador
-  // dizer ao motorista quanto ainda da para abastecer, sem chamar ninguem.
-  const restante = Math.max(0, limite - atual);
-
-  if (r.metrica === "LITROS") {
-    return (
-      `${sujeito} já consumiu ${fmtBR.format(atual)} L do limite de ` +
-      `${fmtBR.format(limite)} L ${janela}. Restam ${fmtBR.format(restante)} L.`
-    );
-  }
-  return (
-    `${sujeito} já consumiu ${fmtBRL.format(atual)} do limite de ` +
-    `${fmtBRL.format(limite)} ${janela}. Restam ${fmtBRL.format(restante)}.`
-  );
+  const n = limite === 1 ? "1 liberação" : `${limite} liberações`;
+  return `${sujeito} já usou ${fmtBR.format(atual)} de ${n} ${janela}.`;
 }

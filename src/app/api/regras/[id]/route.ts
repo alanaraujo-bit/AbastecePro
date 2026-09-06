@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
-import { exigirPapelApi, podeConfigurar } from "@/lib/auth";
+import { exigirSessaoApi } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria";
 import { CorpoRegra } from "../route";
 import { Prisma } from "@/generated/prisma";
@@ -10,7 +10,7 @@ import { Prisma } from "@/generated/prisma";
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  const auth = await exigirPapelApi(podeConfigurar);
+  const auth = await exigirSessaoApi();
   if ("erro" in auth) {
     return NextResponse.json({ erro: auth.erro }, { status: auth.status });
   }
@@ -99,7 +99,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  const auth = await exigirPapelApi(podeConfigurar);
+  const auth = await exigirSessaoApi();
   if ("erro" in auth) {
     return NextResponse.json({ erro: auth.erro }, { status: auth.status });
   }

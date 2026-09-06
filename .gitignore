@@ -46,3 +46,6 @@ next-env.d.ts
 src/generated/
 AGENTS.md
 CLAUDE.md
+
+# assets do OCR, copiados de node_modules por scripts/preparar-ocr.mjs
+/public/tesseract/

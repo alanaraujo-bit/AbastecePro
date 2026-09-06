@@ -14,7 +14,6 @@ import {
   OPCOES_ACAO,
   OPCOES_ESCOPO,
   OPCOES_JANELA,
-  OPCOES_METRICA,
 } from "@/lib/regras/descrever";
 import type { RegraCliente } from "./lista";
 
@@ -63,7 +62,9 @@ export function EditorRegra({
   const [nome, setNome] = useState(regra?.nome ?? "");
   const [descricao, setDescricao] = useState(regra?.descricao ?? "");
   const [escopo, setEscopo] = useState(regra?.escopo ?? "PESSOA");
-  const [metrica, setMetrica] = useState(regra?.metrica ?? "LITROS");
+  // Metrica nao e mais escolha: o sistema so conta liberacoes. Ver
+  // `limiteRegra` em src/lib/regras/descrever.ts.
+  const metrica = "ABASTECIMENTOS";
   const [janela, setJanela] = useState(regra?.janela ?? "SEMANA");
   const [janelaHoras, setJanelaHoras] = useState(
     String(regra?.janelaHoras ?? 6),
@@ -223,12 +224,7 @@ export function EditorRegra({
               aria-label="Limite"
               className="h-9 w-20 rounded-app border border-border bg-surface px-2.5 text-right font-mono text-[0.9375rem] font-semibold tabular-nums focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/12"
             />
-            <SelectFrase
-              rotuloAcessivel="Métrica"
-              valor={metrica}
-              aoMudar={setMetrica}
-              opcoes={OPCOES_METRICA}
-            />
+            <span className="text-sm text-text-muted">liberações</span>
             <SelectFrase
               rotuloAcessivel="Janela"
               valor={janela}
@@ -281,7 +277,7 @@ export function EditorRegra({
         />
 
         <Textarea
-          rotulo="Mensagem para o operador (opcional)"
+          rotulo="Mensagem mostrada na liberação (opcional)"
           value={mensagem}
           onChange={(e) => setMensagem(e.target.value)}
           maxLength={300}

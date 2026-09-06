@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
-import { exigirPapelApi, podeConfigurar } from "@/lib/auth";
+import { exigirSessaoApi } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria";
 import { Prisma } from "@/generated/prisma";
 
@@ -19,7 +19,9 @@ export const CorpoRegra = z
     ativo: z.boolean().default(true),
     prioridade: z.number().int().min(0).max(9999).default(100),
     escopo: z.enum(["GLOBAL", "PESSOA", "VEICULO"]),
-    metrica: z.enum(["ABASTECIMENTOS", "LITROS", "VALOR"]),
+    // O sistema so mede contagem de liberacoes; litros e valor sairam do
+    // modelo. Aceitar as outras metricas criaria regra que nunca dispara.
+    metrica: z.literal("ABASTECIMENTOS").default("ABASTECIMENTOS"),
     janela: z.enum(["DIA", "SEMANA", "MES", "HORAS"]),
     janelaHoras: z.number().int().min(1).max(8760).nullable().optional(),
     limite: z.number().positive().max(9_999_999),
@@ -54,7 +56,7 @@ export const CorpoRegra = z
 
 export async function POST(req: Request) {
   // A checagem vive aqui, não só na página: esconder o botão não fecha a rota.
-  const auth = await exigirPapelApi(podeConfigurar);
+  const auth = await exigirSessaoApi();
   if ("erro" in auth) {
     return NextResponse.json({ erro: auth.erro }, { status: auth.status });
   }

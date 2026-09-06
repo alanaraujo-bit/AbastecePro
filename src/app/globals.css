@@ -465,3 +465,43 @@ textarea {
     transform: none;
   }
 }
+
+/* ============================================================
+   Impressão do comprovante
+   ============================================================
+   Uma única coisa vai para o papel: o bloco #comprovante. Imprimir a
+   página inteira sairia com a barra lateral, a barra de ação e as cores
+   escuras do tema — gastando tinta para produzir um papel que a pessoa
+   ainda teria de decifrar.
+
+   A técnica é esconder tudo e reposicionar o comprovante no topo da
+   folha, em preto sobre branco, independentemente do tema em uso. */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #comprovante,
+  #comprovante * {
+    visibility: visible;
+  }
+
+  #comprovante {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border: 1px solid #000;
+    border-radius: 0;
+    background: #fff;
+    color: #000;
+    padding: 16px;
+  }
+}

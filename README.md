@@ -2,9 +2,13 @@
 
 Sistema de controle de abastecimentos da **Aionix**.
 
-Um operador identifica a placa, o sistema responde **LIBERADO** ou
-**BLOQUEADO** conforme regras configuráveis, e todo o atendimento fica
-registrado com foto, histórico e auditoria.
+Quem gere a frota **libera abastecimentos**: identifica a placa (fotografando
+ou digitando), o sistema responde se aquele veículo **pode** ou **já foi
+liberado**, e a autorização entregue fica registrada com histórico e
+auditoria.
+
+O sistema tem **um único acesso** — a mesma pessoa consulta, libera e
+administra. Não há perfil de motorista nem de frentista.
 
 - **Produção:** https://app-production-400d.up.railway.app
 - **Saúde:** `/api/saude` — diz se o banco responde e se as fotos estão
@@ -21,15 +25,30 @@ npm run db:seed     # dados de demonstração (idempotente)
 npm run dev         # http://localhost:3000
 ```
 
-Contas criadas pelo seed:
+A conta criada pelo seed:
 
-| Perfil     | E-mail                     | Senha        |
-| ---------- | -------------------------- | ------------ |
-| Admin      | `admin@aionix.com.br`      | `Admin@2026` |
-| Supervisor | `supervisor@aionix.com.br` | `Super@2026` |
-| Operador   | `operador@aionix.com.br`   | `Oper@2026`  |
+| E-mail                | Senha        |
+| --------------------- | ------------ |
+| `admin@aionix.com.br` | `Admin@2026` |
 
-> **Atenção:** trocar essas senhas antes de qualquer uso real.
+> **Atenção:** trocar essa senha antes de qualquer uso real, em **Minha
+> conta** no painel.
+
+### Perdeu a senha?
+
+Não existe redefinição por e-mail: o sistema tem uma conta só e nenhuma rota
+para criar outra. O caminho de recuperação é rodar o seed **no servidor**:
+
+```bash
+npm run db:seed
+```
+
+Ele é idempotente e devolve a senha ao valor da tabela acima sem tocar em
+pessoas, veículos ou histórico. Troque-a em seguida.
+
+O seed também **desativa qualquer outra conta** que exista no banco — as do
+modelo antigo, com perfil de operador ou supervisor, que sem papéis passariam
+a abrir o painel inteiro (ver `DECISIONS.md`, D13).
 
 O `.env` local aponta para o Postgres da Railway por um proxy TCP público.
 Isso deixa o desenvolvimento **mais lento que a produção** — cada consulta
@@ -48,25 +67,36 @@ privada da Railway.
 
 ---
 
-## Os dois ambientes
+## O painel
 
-### `/operador` — a experiência principal
+Tudo vive em `/admin`. Não existe mais um "modo operador" separado — a rota
+antiga `/operador` só redireciona, para não quebrar o atalho de quem já
+instalou o app.
 
-Rota única com máquina de estados no cliente, para que o caminho feliz não
-pague nenhuma navegação:
+### `/admin/liberar` — a tela que se usa com alguém na frente
+
+**Uma tela só:** placa, nome e telefone. CPF, marca, modelo, tipo e observação
+ficam atrás de "mais detalhes". Não existe cadastrar antes de registrar — o
+servidor cria pessoa, veículo e vínculo a partir do próprio lançamento.
 
 ```
-placa → veredito → registro → concluído
+lançamento → comprovante
 ```
 
-A consulta dispara **sozinha** assim que a placa fica válida — economiza um
-toque no percurso mais repetido do dia. Placa desconhecida abre cadastro
-rápido sem sair do atendimento.
+A placa entra fotografada ou digitada. Digitada, a verificação dispara
+**sozinha** assim que fica válida; fotografada, **nunca** — a leitura preenche
+o campo e espera confirmação, porque errar a placa aqui liberaria combustível
+no nome do carro errado.
 
-### `/admin` — painel
+A verificação não é etapa: o resultado aparece como aviso entre a placa e o
+botão — *já foi liberado, quando e para quem*. Bloqueado, o botão vira
+"registrar mesmo assim" e pede um motivo, que vai para a auditoria.
 
-Dashboard, abastecimentos (com detalhe que explica cada decisão), pessoas,
-veículos, vínculos, regras, usuários, auditoria, relatórios e configurações.
+### Resto do painel
+
+Dashboard, liberações (com detalhe que explica cada decisão), pessoas,
+veículos, vínculos, regras, auditoria, relatórios, configurações e **Minha
+conta**.
 
 Barra lateral fixa no desktop, gaveta no celular. Funciona por inteiro nos
 dois, mas o desktop usa o espaço de verdade — tabelas densas e duas colunas —
@@ -83,14 +113,17 @@ prisma/
   seed.ts                dados de demonstração
 src/
   app/
-    operador/            fluxo do operador (etapa-*.tsx)
-    admin/               painel
+    admin/
+      liberar/           fluxo de liberação (etapa-*, recorte-placa)
+      ...                resto do painel
+    operador/            redireciona para /admin/liberar
     api/                 rotas HTTP
   components/
     ui/                  primitivos (button, input, sheet, toast)
     admin/               componentes do painel
   lib/
-    auth.ts              sessão, senhas, permissões
+    auth.ts              sessão e senhas (uma conta, sem papéis)
+    ocr-placa.ts         leitura da placa no aparelho (Tesseract em WASM)
     regras/
       avaliar.ts         ← o interpretador de regras
       janelas.ts         fronteiras de dia/semana/mês no fuso do negócio
@@ -111,8 +144,8 @@ uma. Mudar política é editar linha no painel, não fazer deploy.
 atendimento de meses atrás falharia se a regra tivesse sido editada depois.
 
 **A sessão é uma linha no banco, não um JWT.** Foi escolhido justamente para
-permitir revogação imediata: desativar um usuário derruba o acesso dele no
-mesmo instante.
+permitir revogação imediata: trocar a senha ou encerrar os outros aparelhos
+derruba o acesso no mesmo instante, sem esperar token expirar.
 
 **A API nunca é cacheada** — nem pelo service worker, nem por CDN. Servir um
 "LIBERADO" velho seria pior do que não responder.
@@ -135,9 +168,10 @@ depende de ação externa, em [`BLOCKERS.md`](./BLOCKERS.md).
 | `npm run typecheck`  | verificação de tipos                   |
 | `npm run db:deploy`  | aplica migrações (usado no deploy)     |
 | `npm run db:migrate` | cria migração a partir do schema       |
-| `npm run db:seed`    | popula dados de demonstração           |
+| `npm run db:seed`    | dados de demonstração + **reset da senha** |
 | `npm run db:studio`  | inspeciona o banco                     |
 | `npm run icones`     | regera os ícones do PWA a partir da marca |
+| `npm run ocr`        | copia os arquivos do Tesseract para `public/` |
 
 ---
 

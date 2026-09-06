@@ -86,6 +86,22 @@ export function rotuloJanela(
     case "MES":
       return "no mês";
     case "HORAS":
-      return `em ${janelaHoras ?? 24} h`;
+      return `em ${duracaoLegivel(janelaHoras ?? 24)}`;
   }
+}
+
+/**
+ * Horas viram dias quando fecham em dias exatos.
+ *
+ * A janela é armazenada em horas porque é a unidade que o interpretador
+ * usa, mas "a cada 720 horas" não se lê como "a cada 30 dias" — e a frase
+ * da regra é o que a pessoa confere antes de confiar na política. Abaixo
+ * de um dia, a hora continua sendo a unidade natural ("a cada 6 horas").
+ */
+export function duracaoLegivel(horas: number): string {
+  if (horas >= 24 && horas % 24 === 0) {
+    const dias = horas / 24;
+    return dias === 1 ? "1 dia" : `${dias} dias`;
+  }
+  return horas === 1 ? "1 hora" : `${horas} horas`;
 }

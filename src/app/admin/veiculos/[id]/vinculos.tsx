@@ -114,7 +114,7 @@ export function GestorVinculos({
         <Vazio
           Icone={User}
           titulo="Nenhum condutor vinculado"
-          descricao="Sem vínculo, o operador vê a placa mas não sabe quem está abastecendo."
+          descricao="Sem vínculo, a consulta mostra a placa mas não diz em nome de quem liberar."
           acao={
             <Button onClick={() => setAdicionando(true)}>
               <Plus className="size-4.5" />

@@ -20,11 +20,9 @@ export type RegraDescritivel = {
   alvoNome?: string | null;
 };
 
+import { duracaoLegivel } from "@/lib/regras/janelas";
+
 const fmt = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
-const fmtBRL = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
 
 export function sujeitoRegra(r: RegraDescritivel): string {
   if (r.escopo === "GLOBAL") return "o posto";
@@ -32,12 +30,28 @@ export function sujeitoRegra(r: RegraDescritivel): string {
   return r.escopo === "PESSOA" ? "cada pessoa" : "cada veículo";
 }
 
+/**
+ * O limite e sempre uma CONTAGEM de liberacoes.
+ *
+ * Litros e valor sairam do modelo junto com o modo operador: quem libera
+ * entrega um papel e nunca ve a bomba. Regras antigas com essas metricas
+ * continuam no banco, marcadas como sem efeito na lista, ate serem
+ * apagadas — por isso a funcao ainda recebe `metrica` sem usa-la.
+ */
 export function limiteRegra(r: RegraDescritivel): string {
-  if (r.metrica === "LITROS") return `${fmt.format(r.limite)} L`;
-  if (r.metrica === "VALOR") return fmtBRL.format(r.limite);
+  if (metricaObsoleta(r.metrica)) {
+    return r.metrica === "LITROS"
+      ? `${fmt.format(r.limite)} L`
+      : `R$ ${fmt.format(r.limite)}`;
+  }
   return r.limite === 1
-    ? "1 abastecimento"
-    : `${fmt.format(r.limite)} abastecimentos`;
+    ? "1 liberação"
+    : `${fmt.format(r.limite)} liberações`;
+}
+
+/** Metricas que o sistema nao mede mais. */
+export function metricaObsoleta(metrica: string): boolean {
+  return metrica === "LITROS" || metrica === "VALOR";
 }
 
 export function janelaRegra(r: RegraDescritivel): string {
@@ -49,8 +63,9 @@ export function janelaRegra(r: RegraDescritivel): string {
     case "MES":
       return "por mês";
     case "HORAS": {
-      const h = r.janelaHoras ?? 24;
-      return h === 1 ? "por hora" : `a cada ${h} horas`;
+      // "a cada 720 horas" não se lê como "a cada 30 dias", e é esta frase
+      // que a pessoa confere antes de confiar na política.
+      return `a cada ${duracaoLegivel(r.janelaHoras ?? 24)}`;
     }
     default:
       return "";
@@ -74,12 +89,6 @@ export const OPCOES_ESCOPO = [
   { valor: "PESSOA", rotulo: "Pessoa" },
   { valor: "VEICULO", rotulo: "Veículo" },
   { valor: "GLOBAL", rotulo: "Posto inteiro" },
-] as const;
-
-export const OPCOES_METRICA = [
-  { valor: "ABASTECIMENTOS", rotulo: "Abastecimentos" },
-  { valor: "LITROS", rotulo: "Litros" },
-  { valor: "VALOR", rotulo: "Valor (R$)" },
 ] as const;
 
 export const OPCOES_JANELA = [

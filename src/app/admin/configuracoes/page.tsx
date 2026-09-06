@@ -1,4 +1,4 @@
-import { exigirConfigurador } from "@/lib/auth";
+import { exigirUsuario } from "@/lib/auth";
 import { lerConfig } from "@/lib/config";
 import { FUSO_PADRAO } from "@/lib/regras/janelas";
 import { descricaoArmazenamento } from "@/lib/storage";
@@ -10,14 +10,14 @@ export const metadata = { title: "Configurações" };
 export const dynamic = "force-dynamic";
 
 export default async function ConfiguracoesPage() {
-  await exigirConfigurador();
+  await exigirUsuario();
   const config = await lerConfig();
 
   return (
     <>
       <PageHeader
         titulo="Configurações"
-        descricao="Parâmetros que mudam o comportamento do atendimento"
+        descricao="Parâmetros que mudam o comportamento da liberação"
       />
 
       <Conteudo className="flex max-w-3xl flex-col gap-5">
@@ -41,7 +41,7 @@ export default async function ConfiguracoesPage() {
           <p className="border-t border-border px-4 py-3 text-xs leading-snug text-text-muted sm:px-5">
             Definidos por variável de ambiente (<code>TZ_NEGOCIO</code> e{" "}
             <code>S3_*</code>). O fuso é usado para calcular as janelas das
-            regras — “por dia” significa o dia civil de quem opera o posto, não
+            regras — “por dia” significa o dia civil de quem opera o sistema, não
             o do servidor.
           </p>
         </Card>

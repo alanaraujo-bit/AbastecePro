@@ -75,7 +75,7 @@ export function BotaoExcluir({
         titulo={temHistorico ? "Desativar cadastro" : "Excluir cadastro"}
         descricao={
           temHistorico
-            ? `${nome} já tem abastecimentos registrados. O cadastro será DESATIVADO, não apagado: o histórico e a auditoria permanecem íntegros, e ${artigo} deixa de aparecer para o operador.`
+            ? `${nome} já tem liberações registradas. O cadastro será DESATIVADO, não apagado: o histórico e a auditoria permanecem íntegros, e ${artigo} deixa de aparecer na consulta.`
             : `${nome} não tem nenhum abastecimento registrado e será removido definitivamente. Esta ação não pode ser desfeita.`
         }
         rodape={

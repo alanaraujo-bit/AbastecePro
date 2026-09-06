@@ -14,7 +14,7 @@ import {
   UserCog,
   Menu,
   X,
-  Smartphone,
+  TicketCheck,
   Settings,
 } from "lucide-react";
 import { Marca, Wordmark } from "@/components/marca";
@@ -26,16 +26,17 @@ type Item = {
   href: string;
   rotulo: string;
   Icone: typeof Fuel;
-  /** Só ADMIN vê — são as telas que definem a política. */
-  soAdmin?: boolean;
 };
 
 const GRUPOS: { titulo: string; itens: Item[] }[] = [
   {
     titulo: "Operação",
     itens: [
+      // Primeiro item do painel de propósito: é o que se faz com alguém
+      // esperando na frente da mesa. O resto é consulta.
+      { href: "/admin/liberar", rotulo: "Liberar", Icone: TicketCheck },
       { href: "/admin", rotulo: "Dashboard", Icone: LayoutDashboard },
-      { href: "/admin/abastecimentos", rotulo: "Abastecimentos", Icone: Fuel },
+      { href: "/admin/abastecimentos", rotulo: "Liberações", Icone: Fuel },
     ],
   },
   {
@@ -52,13 +53,6 @@ const GRUPOS: { titulo: string; itens: Item[] }[] = [
         href: "/admin/regras",
         rotulo: "Regras",
         Icone: SlidersHorizontal,
-        soAdmin: true,
-      },
-      {
-        href: "/admin/usuarios",
-        rotulo: "Usuários",
-        Icone: UserCog,
-        soAdmin: true,
       },
       { href: "/admin/auditoria", rotulo: "Auditoria", Icone: ScrollText },
       { href: "/admin/relatorios", rotulo: "Relatórios", Icone: BarChart3 },
@@ -66,8 +60,8 @@ const GRUPOS: { titulo: string; itens: Item[] }[] = [
         href: "/admin/configuracoes",
         rotulo: "Configurações",
         Icone: Settings,
-        soAdmin: true,
       },
+      { href: "/admin/conta", rotulo: "Minha conta", Icone: UserCog },
     ],
   },
 ];
@@ -78,27 +72,19 @@ function ehAtivo(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function Links({
-  ehAdmin,
-  aoNavegar,
-}: {
-  ehAdmin: boolean;
-  aoNavegar?: () => void;
-}) {
+function Links({ aoNavegar }: { aoNavegar?: () => void }) {
   const pathname = usePathname();
 
   return (
     <nav className="flex flex-col gap-5 px-3">
       {GRUPOS.map((grupo) => {
-        const itens = grupo.itens.filter((i) => !i.soAdmin || ehAdmin);
-        if (!itens.length) return null;
         return (
           <div key={grupo.titulo}>
             <p className="mb-1.5 px-3 text-[0.6875rem] font-semibold uppercase tracking-wider text-text-muted">
               {grupo.titulo}
             </p>
             <ul className="flex flex-col gap-0.5">
-              {itens.map(({ href, rotulo, Icone }) => {
+              {grupo.itens.map(({ href, rotulo, Icone }) => {
                 const ativo = ehAtivo(pathname, href);
                 return (
                   <li key={href}>
@@ -127,18 +113,9 @@ function Links({
   );
 }
 
-export function AdminNav({
-  nome,
-  email,
-  papel,
-}: {
-  nome: string;
-  email: string;
-  papel: string;
-}) {
+export function AdminNav({ nome, email }: { nome: string; email: string }) {
   const [aberto, setAberto] = useState(false);
   const pathname = usePathname();
-  const ehAdmin = papel === "ADMIN";
 
   // Trocar de rota fecha o menu: no celular ele cobre a tela inteira.
   useEffect(() => setAberto(false), [pathname]);
@@ -167,7 +144,7 @@ export function AdminNav({
           <Wordmark className="text-[0.9375rem]" />
           <div className="ml-auto flex items-center gap-0.5">
             <ThemeToggle compacto />
-            <MenuUsuario nome={nome} papel={papel} email={email} />
+            <MenuUsuario nome={nome} email={email} />
           </div>
         </div>
       </header>
@@ -194,16 +171,7 @@ export function AdminNav({
               </button>
             </div>
             <div className="scroll-area safe-bottom flex-1 py-3">
-              <Links ehAdmin={ehAdmin} aoNavegar={() => setAberto(false)} />
-              <div className="mt-5 px-3">
-                <Link
-                  href="/operador"
-                  className="flex h-10 items-center gap-2.5 rounded-app px-3 text-[0.9375rem] font-medium text-text-secondary transition-colors hover:bg-surface-2 hover:text-text"
-                >
-                  <Smartphone className="size-4.5 shrink-0" />
-                  Modo operador
-                </Link>
-              </div>
+              <Links aoNavegar={() => setAberto(false)} />
             </div>
           </div>
         </div>
@@ -219,24 +187,17 @@ export function AdminNav({
         </div>
 
         <div className="scroll-area flex-1 py-2">
-          <Links ehAdmin={ehAdmin} />
+          <Links />
         </div>
 
         <div className="border-t border-border p-3">
-          <Link
-            href="/operador"
-            className="mb-2 flex h-10 items-center gap-2.5 rounded-app px-3 text-[0.9375rem] font-medium text-text-secondary transition-colors hover:bg-surface-2 hover:text-text"
-          >
-            <Smartphone className="size-4.5 shrink-0" />
-            Modo operador
-          </Link>
           <div className="flex items-center gap-2 px-1">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{nome}</p>
               <p className="truncate text-xs text-text-muted">{email}</p>
             </div>
             <ThemeToggle compacto />
-            <MenuUsuario nome={nome} papel={papel} email={email} acima />
+            <MenuUsuario nome={nome} email={email} acima />
           </div>
         </div>
       </aside>

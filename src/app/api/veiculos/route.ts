@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
-import { exigirPapelApi, podeAcessarAdmin } from "@/lib/auth";
+import { exigirSessaoApi } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria";
 import { normalizarPlaca, placaValida } from "@/lib/placa";
 import { Prisma } from "@/generated/prisma";
@@ -36,7 +36,7 @@ export function prepararVeiculo(d: z.infer<typeof CorpoVeiculo>) {
 }
 
 export async function POST(req: Request) {
-  const auth = await exigirPapelApi(podeAcessarAdmin);
+  const auth = await exigirSessaoApi();
   if ("erro" in auth) {
     return NextResponse.json({ erro: auth.erro }, { status: auth.status });
   }

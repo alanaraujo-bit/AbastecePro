@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Download, Fuel, Droplets, Ban, ShieldAlert } from "lucide-react";
+import { Download, Fuel, Droplets, Ban, ShieldAlert, Users } from "lucide-react";
 
 import { prisma } from "@/lib/db";
-import { exigirAdmin } from "@/lib/auth";
+import { exigirUsuario } from "@/lib/auth";
 import { formatarPlaca } from "@/lib/placa";
 import { litros as fmtLitros, moeda, numero } from "@/lib/utils";
 import {
@@ -30,7 +30,7 @@ export default async function RelatoriosPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  await exigirAdmin();
+  await exigirUsuario();
   const sp = await searchParams;
 
   const chave = sp.periodo && PERIODOS[sp.periodo] ? sp.periodo : "30";
@@ -61,23 +61,26 @@ export default async function RelatoriosPage({
         by: ["combustivel"],
         where: { ...efetivados, combustivel: { not: null } },
         _sum: { litros: true, valor: true },
-        _count: { _all: true },
-        orderBy: { _sum: { litros: "desc" } },
+        _count: { combustivel: true },
+        orderBy: { _count: { combustivel: "desc" } },
       }),
+      // Ordenado por CONTAGEM. Ordenar por litros deixaria o ranking a
+      // cargo de registros antigos, quando o sistema ainda anotava a bomba
+      // — e um "maior consumo" cuja ordem ninguem consegue explicar.
       prisma.abastecimento.groupBy({
         by: ["pessoaId"],
         where: { ...efetivados, pessoaId: { not: null } },
         _sum: { litros: true, valor: true },
-        _count: { _all: true },
-        orderBy: { _sum: { litros: "desc" } },
+        _count: { pessoaId: true },
+        orderBy: { _count: { pessoaId: "desc" } },
         take: 10,
       }),
       prisma.abastecimento.groupBy({
         by: ["veiculoId"],
         where: { ...efetivados, veiculoId: { not: null } },
         _sum: { litros: true, valor: true },
-        _count: { _all: true },
-        orderBy: { _sum: { litros: "desc" } },
+        _count: { veiculoId: true },
+        orderBy: { _count: { veiculoId: "desc" } },
         take: 10,
       }),
     ]);
@@ -127,24 +130,28 @@ export default async function RelatoriosPage({
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <Indicador
-            rotulo="Abastecimentos"
+            rotulo="Liberações"
             valor={numero(totais._count._all)}
             Icone={Fuel}
           />
           <Indicador
-            rotulo="Volume total"
-            valor={fmtLitros(totalLitros)}
-            Icone={Droplets}
+            rotulo="Pessoas atendidas"
+            valor={numero(porPessoa.length)}
+            detalhe={`${numero(porVeiculo.length)} veículo(s) distinto(s)`}
+            Icone={Users}
           />
-          <Indicador
-            rotulo="Valor total"
-            valor={moeda(totais._sum.valor ?? 0)}
-            detalhe={
-              totalLitros > 0
-                ? `${moeda(Number(totais._sum.valor ?? 0) / totalLitros)} por litro em média`
-                : undefined
-            }
-          />
+          {/* Volume só existe no histórico anterior à mudança de modelo (ver
+              DECISIONS.md, D14). O bloco desaparece quando o período não
+              tem nenhum registro daquela época — um "0 L" fixo faria o
+              relatório parecer quebrado. */}
+          {totalLitros > 0 && (
+            <Indicador
+              rotulo="Volume (registros antigos)"
+              valor={fmtLitros(totalLitros)}
+              detalhe={moeda(totais._sum.valor ?? 0)}
+              Icone={Droplets}
+            />
+          )}
           <Indicador
             rotulo="Bloqueios"
             valor={numero(bloqueios)}
@@ -154,24 +161,24 @@ export default async function RelatoriosPage({
           />
         </div>
 
-        <Card titulo="Por combustível">
+        <Card titulo="Por combustível · registros antigos">
           {porCombustivel.length === 0 ? (
             <Vazio
               Icone={Droplets}
               titulo="Sem dados no período"
-              descricao="Nenhum abastecimento com combustível informado."
+              descricao="O combustível só era anotado no modelo antigo, quando o registro descrevia a bomba."
             />
           ) : (
             <ul className="flex flex-col gap-3 p-4 sm:p-5">
               {porCombustivel.map((c) => {
-                const l = Number(c._sum.litros ?? 0);
+                const l = Number(c._sum?.litros ?? 0);
                 const pct = totalLitros > 0 ? (l / totalLitros) * 100 : 0;
                 return (
                   <li key={c.combustivel}>
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="text-sm font-medium">{c.combustivel}</span>
                       <span className="shrink-0 text-sm tabular-nums text-text-secondary">
-                        {fmtLitros(l)} · {moeda(c._sum.valor ?? 0)} ·{" "}
+                        {fmtLitros(l)} · {moeda(c._sum?.valor ?? 0)} ·{" "}
                         {pct.toFixed(0)}%
                       </span>
                     </div>
@@ -189,7 +196,7 @@ export default async function RelatoriosPage({
         </Card>
 
         <div className="grid gap-5 xl:grid-cols-2">
-          <Card titulo="Maior consumo · pessoas">
+          <Card titulo="Quem mais recebeu">
             {porPessoa.length === 0 ? (
               <Vazio Icone={Fuel} titulo="Sem dados no período" />
             ) : (
@@ -198,7 +205,7 @@ export default async function RelatoriosPage({
                   chave: p.pessoaId!,
                   titulo: nomePessoa.get(p.pessoaId!) ?? "—",
                   subtitulo: null,
-                  qtd: p._count._all,
+                  qtd: p._count.pessoaId,
                   litros: Number(p._sum.litros ?? 0),
                   valor: Number(p._sum.valor ?? 0),
                   href: `/admin/pessoas/${p.pessoaId}`,
@@ -207,7 +214,7 @@ export default async function RelatoriosPage({
             )}
           </Card>
 
-          <Card titulo="Maior consumo · veículos">
+          <Card titulo="Veículos mais liberados">
             {porVeiculo.length === 0 ? (
               <Vazio Icone={Fuel} titulo="Sem dados no período" />
             ) : (
@@ -219,7 +226,7 @@ export default async function RelatoriosPage({
                     titulo: d ? formatarPlaca(d.placa) : "—",
                     subtitulo:
                       [d?.marca, d?.modelo].filter(Boolean).join(" ") || null,
-                    qtd: v._count._all,
+                    qtd: v._count.veiculoId,
                     litros: Number(v._sum.litros ?? 0),
                     valor: Number(v._sum.valor ?? 0),
                     href: `/admin/veiculos/${v.veiculoId}`,
@@ -279,11 +286,15 @@ function TabelaRanking({
             </div>
             <div className="shrink-0 text-right">
               <p className="text-sm font-medium tabular-nums">
-                {fmtLitros(l.litros)}
+                {l.qtd === 1 ? "1 liberação" : `${numero(l.qtd)} liberações`}
               </p>
-              <p className="text-xs tabular-nums text-text-muted">
-                {numero(l.qtd)}× · {moeda(l.valor)}
-              </p>
+              {/* Litros só aparecem se houver: são herança dos registros
+                  anteriores à mudança de modelo, não um campo do produto. */}
+              {l.litros > 0 && (
+                <p className="text-xs tabular-nums text-text-muted">
+                  {fmtLitros(l.litros)} · {moeda(l.valor)}
+                </p>
+              )}
             </div>
           </Link>
         </li>

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { prisma } from "@/lib/db";
-import { exigirAdmin } from "@/lib/auth";
+import { exigirUsuario } from "@/lib/auth";
 import { dataHora, numero, tempoRelativo } from "@/lib/utils";
 import { PageHeader, Conteudo, Card, Vazio, Etiqueta } from "@/components/admin/ui";
 import { BuscaFiltro, AbasFiltro, Paginacao } from "@/components/admin/filtros";
@@ -43,10 +43,10 @@ const ACOES: Record<
     Icone: AlertTriangle,
     tom: "warn",
   },
-  "abastecimento.liberado": { rotulo: "Registrou abastecimento", Icone: Fuel, tom: "ok" },
-  "abastecimento.bloqueado": { rotulo: "Atendimento bloqueado", Icone: Ban, tom: "danger" },
+  "abastecimento.liberado": { rotulo: "Liberou abastecimento", Icone: Fuel, tom: "ok" },
+  "abastecimento.bloqueado": { rotulo: "Pedido bloqueado", Icone: Ban, tom: "danger" },
   "abastecimento.autorizar": {
-    rotulo: "Autorizou exceção",
+    rotulo: "Liberou mesmo com bloqueio",
     Icone: ShieldAlert,
     tom: "warn",
   },
@@ -69,9 +69,18 @@ const ACOES: Record<
   "veiculo.excluir": { rotulo: "Excluiu veículo", Icone: Car, tom: "danger" },
   "vinculo.criar": { rotulo: "Vinculou condutor", Icone: Link2 },
   "vinculo.remover": { rotulo: "Removeu vínculo", Icone: Link2, tom: "warn" },
+  // Acoes do modelo antigo, quando havia varios usuarios e papeis. Ficam
+  // no mapa porque as LINHAS antigas continuam no banco — perder o rotulo
+  // transformaria a trilha de auditoria em codigo cru.
   "usuario.criar": { rotulo: "Criou usuário", Icone: UserCog, tom: "warn" },
   "usuario.editar": { rotulo: "Editou usuário", Icone: UserCog, tom: "warn" },
-  "cadastro.rapido": { rotulo: "Cadastro rápido na pista", Icone: Car },
+  "conta.editar": { rotulo: "Alterou a conta", Icone: UserCog, tom: "warn" },
+  "conta.encerrar-sessoes": {
+    rotulo: "Encerrou outras sessões",
+    Icone: UserCog,
+    tom: "warn",
+  },
+  "cadastro.rapido": { rotulo: "Cadastro rápido no atendimento", Icone: Car },
   "relatorio.exportar": { rotulo: "Exportou relatório", Icone: Download },
 };
 
@@ -109,7 +118,7 @@ export default async function AuditoriaPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  await exigirAdmin();
+  await exigirUsuario();
   const sp = await searchParams;
 
   const q = sp.q?.trim() ?? "";

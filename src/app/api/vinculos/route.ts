@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
-import { exigirPapelApi, podeAcessarAdmin } from "@/lib/auth";
+import { exigirSessaoApi } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria";
 
 const Corpo = z.object({
@@ -13,7 +13,7 @@ const Corpo = z.object({
 
 /** Cria (ou reativa) o vínculo entre uma pessoa e um veículo. */
 export async function POST(req: Request) {
-  const auth = await exigirPapelApi(podeAcessarAdmin);
+  const auth = await exigirSessaoApi();
   if ("erro" in auth) {
     return NextResponse.json({ erro: auth.erro }, { status: auth.status });
   }
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
 
 /** Remove o vínculo. O histórico de abastecimentos não é afetado. */
 export async function DELETE(req: Request) {
-  const auth = await exigirPapelApi(podeAcessarAdmin);
+  const auth = await exigirSessaoApi();
   if ("erro" in auth) {
     return NextResponse.json({ erro: auth.erro }, { status: auth.status });
   }

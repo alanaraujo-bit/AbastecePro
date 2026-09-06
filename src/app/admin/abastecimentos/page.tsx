@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Fuel, Camera, ChevronRight } from "lucide-react";
 
 import { prisma } from "@/lib/db";
-import { exigirAdmin } from "@/lib/auth";
+import { exigirUsuario } from "@/lib/auth";
 import { normalizarPlaca } from "@/lib/placa";
 import { formatarPlaca } from "@/lib/placa";
 import {
@@ -32,7 +32,7 @@ export default async function AbastecimentosPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  await exigirAdmin();
+  await exigirUsuario();
   const sp = await searchParams;
 
   const q = sp.q?.trim() ?? "";
@@ -60,7 +60,7 @@ export default async function AbastecimentosPage({
     }
   }
 
-  const [total, itens, somas] = await Promise.all([
+  const [total, itens] = await Promise.all([
     prisma.abastecimento.count({ where }),
     prisma.abastecimento.findMany({
       where,
@@ -80,19 +80,15 @@ export default async function AbastecimentosPage({
         operador: { select: { nome: true } },
       },
     }),
-    prisma.abastecimento.aggregate({
-      where: { ...where, resultado: { in: ["LIBERADO", "AUTORIZADO_EXCECAO"] } },
-      _sum: { litros: true, valor: true },
-    }),
   ]);
 
   return (
     <>
       <PageHeader
-        titulo="Abastecimentos"
+        titulo="Liberações"
         descricao={
           total > 0
-            ? `${numero(total)} registro(s) · ${fmtLitros(somas._sum.litros ?? 0)} · ${moeda(somas._sum.valor ?? 0)}`
+            ? `${numero(total)} registro(s) no filtro atual`
             : undefined
         }
         acoes={
@@ -136,11 +132,11 @@ export default async function AbastecimentosPage({
           {itens.length === 0 ? (
             <Vazio
               Icone={Fuel}
-              titulo="Nenhum abastecimento encontrado"
+              titulo="Nenhuma liberação encontrada"
               descricao={
                 q || resultado || periodo
                   ? "Nenhum registro corresponde aos filtros aplicados. Tente ampliar o período ou limpar a busca."
-                  : "Os atendimentos registrados pelos operadores aparecem aqui."
+                  : "As liberações emitidas aparecem aqui."
               }
             />
           ) : (
@@ -156,7 +152,7 @@ export default async function AbastecimentosPage({
                         "Litros",
                         "Valor",
                         "Combustível",
-                        "Operador",
+                        "Liberado por",
                         "Data",
                         "Resultado",
                       ].map((h) => (
