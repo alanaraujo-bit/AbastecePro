@@ -3,6 +3,7 @@ import { lerConfig } from "@/lib/config";
 import { FUSO_PADRAO } from "@/lib/regras/janelas";
 import { descricaoArmazenamento } from "@/lib/storage";
 import { PageHeader, Conteudo, Card } from "@/components/admin/ui";
+import { AssinaturaAionix } from "@/components/assinatura-aionix";
 import { FormularioConfig } from "./formulario";
 
 export const metadata = { title: "Configurações" };
@@ -44,6 +45,8 @@ export default async function ConfiguracoesPage() {
             o do servidor.
           </p>
         </Card>
+
+        <AssinaturaAionix className="mt-2 self-start" />
       </Conteudo>
     </>
   );

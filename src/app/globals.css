@@ -75,6 +75,10 @@
   --brand-hover: #163fae;
   --brand-soft: #eef4ff;
   --brand-on-soft: #163fae;
+  /* Vela da marca sobre superficie grande (painel de entrada). Definida por
+     tema, e nao derivada com color-mix: assim cada tema recebe a dose que
+     lhe cabe, e o CSS nao precisa de fallback opaco. */
+  --brand-wash: rgb(27 81 219 / 0.13);
   --ok: #0b8b50;
   --ok-fg: #ffffff;
   --ok-soft: #e7f7ef;
@@ -107,6 +111,7 @@
   --brand-hover: #7ba1ff;
   --brand-soft: #16233f;
   --brand-on-soft: #a8c2ff;
+  --brand-wash: rgb(94 139 255 / 0.16);
   --ok: #34c77b;
   --ok-fg: #06180f;
   --ok-soft: #10281d;
@@ -274,6 +279,66 @@ textarea {
   .scroll-area::-webkit-scrollbar-track {
     background: transparent;
   }
+}
+
+/* ============================================================
+   Painel de marca da tela de entrada.
+
+   Segue o tema do usuario, entao nao pode se separar do lado do
+   formulario por cor fixa — se separa por profundidade: superficie
+   recuada, um halo da marca no alto e uma malha fina de patio que
+   morre antes das bordas. A malha e ::before para nao competir com o
+   halo no mesmo `background`; o conteudo fica em `relative`.
+   ============================================================ */
+.painel-marca {
+  background:
+    radial-gradient(115% 85% at 14% -8%, var(--brand-wash), transparent 62%),
+    var(--surface-sunken);
+}
+.painel-marca::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 3.5rem 3.5rem;
+  opacity: 0.6;
+  -webkit-mask-image: radial-gradient(75% 65% at 25% 35%, #000, transparent 78%);
+  mask-image: radial-gradient(75% 65% at 25% 35%, #000, transparent 78%);
+}
+
+/* Cursor da placa na vitrine: pisca em degrau, como terminal — nao
+   desaparece suave, que leria como elemento entrando na tela. */
+@keyframes cursor-placa {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+.cursor-placa {
+  animation: cursor-placa 1s steps(1, end) infinite;
+}
+
+/* Tres pontos da consulta: sobem e voltam, defasados. */
+@keyframes pulso-consulta {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+.pulso-consulta {
+  animation: pulso-consulta 900ms var(--ease-out-app) infinite;
 }
 
 /* Safe areas (notch / barra inferior) */
