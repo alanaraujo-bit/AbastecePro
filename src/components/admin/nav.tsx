@@ -21,7 +21,6 @@ import { Marca, Wordmark } from "@/components/marca";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MenuUsuario } from "@/components/menu-usuario";
 import { cn } from "@/lib/utils";
-import { travarRolagem } from "@/lib/travar-rolagem";
 
 type Item = {
   href: string;
@@ -144,31 +143,11 @@ export function AdminNav({
   // Trocar de rota fecha o menu: no celular ele cobre a tela inteira.
   useEffect(() => setAberto(false), [pathname]);
 
-  // A gaveta é `lg:hidden`, mas o estado dela não some sozinho quando a
-  // janela alarga: sem isto, quem abre o menu no celular e gira o aparelho
-  // para paisagem larga fica com a rolagem travada por um menu invisível.
-  //
-  // Depende de `aberto` para conferir também no momento de abrir, e não só
-  // quando a largura muda.
-  useEffect(() => {
-    if (!aberto) return;
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const aoMudar = () => mq.matches && setAberto(false);
-    aoMudar();
-    mq.addEventListener("change", aoMudar);
-    return () => mq.removeEventListener("change", aoMudar);
-  }, [aberto]);
-
   useEffect(() => {
     if (!aberto) return;
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setAberto(false);
     document.addEventListener("keydown", esc);
-    // A gaveta cobre a tela inteira; o conteúdo atrás não pode rolar.
-    const destravar = travarRolagem();
-    return () => {
-      document.removeEventListener("keydown", esc);
-      destravar();
-    };
+    return () => document.removeEventListener("keydown", esc);
   }, [aberto]);
 
   return (

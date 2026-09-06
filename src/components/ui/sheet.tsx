@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { travarRolagem } from "@/lib/travar-rolagem";
 import { prenderFoco, focoAnterior } from "@/lib/foco";
 
 /**
@@ -49,9 +48,12 @@ export function Sheet({
     }
     document.addEventListener("keydown", esc);
 
-    // Congela a rolagem de fundo: no celular, o conteúdo atrás rolando
-    // enquanto o painel está aberto é a coisa que mais denuncia "site".
-    const destravar = travarRolagem();
+    // Congela a rolagem do documento. Hoje isto quase nunca entra em ação:
+    // a moldura do app já é `overflow-hidden` e quem rola são os
+    // contêineres internos. Fica como rede de segurança para telas fora da
+    // moldura (o login, por exemplo) e custa duas linhas.
+    const overflowAntes = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
     // O foco inicial é decidido aqui, e não por `autoFocus` nos campos.
     // Depender do `autoFocus` deixava o resultado à mercê da ordem em que
@@ -80,7 +82,7 @@ export function Sheet({
 
     return () => {
       document.removeEventListener("keydown", esc);
-      destravar();
+      document.body.style.overflow = overflowAntes;
       soltarFoco();
       clearTimeout(t);
     };

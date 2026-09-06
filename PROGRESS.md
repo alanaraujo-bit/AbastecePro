@@ -101,15 +101,7 @@ concluído`. Consulta dispara sozinha quando a placa fica válida.
     indicando isso, e fechar o painel largava o foco no começo da página.
     `aria-modal` promete resolver isso e nenhum navegador resolve sozinho
     fora de `<dialog>`.
-18. **Trava de rolagem sem contagem.** Cada camada salvava e restaurava
-    `overflow` por conta própria: com a foto ampliada aberta por cima de
-    outro painel, fechar a de cima devolvia a rolagem com a de baixo ainda
-    aberta. Agora a trava é contada e só o último a sair destrava.
-19. **A gaveta do admin não travava a rolagem** — o menu cobria a tela e a
-    página rolava atrás dele. E o estado dela não sumia ao alargar a
-    janela: abrir o menu no celular e girar para paisagem larga deixava a
-    rolagem travada por um menu invisível.
-20. **O foco inicial dos painéis dependia de `autoFocus` nos campos**, o
+18. **O foco inicial dos painéis dependia de `autoFocus` nos campos**, o
     que deixava o resultado à mercê da ordem em que o React monta efeitos —
     em desenvolvimento o cursor chegava a sair do campo e voltar. Hoje o
     painel decide: cursor no primeiro campo ao cadastrar, no próprio painel
@@ -139,14 +131,26 @@ Nenhum destes bloqueia a demonstração; todos são decisões conscientes.
   janelas e o interpretador são funções puras e é onde um erro custa caro.
 - **OCR automático de placa** — ver `BLOCKERS.md`.
 
-### Verificado de forma limitada
+### Uma coisa que parecia defeito e não era
 
-O fechamento da gaveta ao **alargar a janela** (achado 19) foi verificado
-pelo caminho equivalente — abrir a gaveta já em largura de desktop, que
-passa pelo mesmo `matchMedia` e se corrige na hora. A rotação de fato não
-deu para exercitar: a automação de navegador desta máquina não redimensiona
-a janela de forma confiável (relata sucesso e `window.innerWidth` não muda).
-Vale repetir o teste à mão num aparelho antes da demonstração.
+Ao mexer nas camadas modais, escrevi uma trava de rolagem de fundo contada
+e a espalhei pela gaveta e pela foto ampliada, convencido de estar
+corrigindo "a página rolando atrás do painel". **Não estava.** Medido no
+navegador: `document.scrollingElement.scrollHeight === clientHeight` em
+todas as telas com painel — a moldura do app é `h-screen-app
+overflow-hidden` e quem rola são os contêineres internos. Com um painel
+aberto, rolar sobre a sobreposição não move nada (verificado: `scrollTop`
+0 antes e depois).
+
+Ou seja: `overflow: hidden` no body ali era inerte, e a máquina toda foi
+removida. O que impede a rolagem de fundo é o próprio layout, mais o
+`overscroll-behavior: contain` das áreas de rolagem. As duas linhas que
+sobraram no painel são rede de segurança barata para telas fora da moldura,
+como o login.
+
+Fica registrado porque a lição é reaproveitável: *ver o estilo aplicado não
+é ver o comportamento corrigido.* A primeira "verificação" só confirmava
+que a propriedade tinha sido escrita.
 
 ---
 

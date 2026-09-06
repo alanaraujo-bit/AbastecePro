@@ -106,7 +106,23 @@ if (typeof document !== "undefined") {
   );
 }
 
-/** O último elemento focado fora de qualquer diálogo. */
+/**
+ * Para onde devolver o foco quando a camada modal fechar.
+ *
+ * Prefere quem está focado agora: chamado do efeito de abertura, isso é o
+ * próprio gatilho, porque nenhum campo dos painéis usa `autoFocus` — o
+ * painel decide o foco inicial depois, sozinho.
+ *
+ * O histórico do ouvinte é a reserva, para o caso de algum conteúdo levar
+ * o foco para dentro do diálogo antes desta chamada. Ele sozinho não
+ * bastaria: com a aba em segundo plano o Chrome não dispara `focusin`,
+ * e o histórico ficaria vazio.
+ */
 export function focoAnterior(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  const ativo = document.activeElement as HTMLElement | null;
+  if (ativo && ativo !== document.body && !ativo.closest('[role="dialog"]')) {
+    return ativo;
+  }
   return ultimoFoco;
 }
